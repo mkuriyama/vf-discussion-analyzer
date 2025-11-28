@@ -6,215 +6,102 @@ AI モデル仕様データベース
 MODEL_SPECS = {
     # ==================== OpenAI ====================
     "OpenAI": {
-        # GPT-5 シリーズ
+        # 【Update】 2025-11-13 リリースの最新系列
+        "gpt-5.1-2025-11-13": {
+            "name": "GPT-5.1",
+            "input_tokens": 400_000,        # GPT-5 Proと同等だが制御性向上
+            "output_tokens": 128_000,
+            "description": "最新フラッグシップ。Agenticワークフローに特化。",
+            "released": "2025-11-13"
+        },
+        # 最上位モデル (DevDay発表版)
+        "gpt-5-pro-2025-10-06": {
+            "name": "GPT-5 Pro",
+            "input_tokens": 400_000,
+            "output_tokens": 272_000,       # Reasoning強化により出力枠が大きい
+            "description": "DevDay 2025発表の重量級モデル。Deep Research等はこれがベース。",
+            "released": "2025-10-06"
+        },
         "gpt-5-2025-08-07": {
             "name": "GPT-5",
-            "input_tokens": 272_000,
+            "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "最新の統合モデル。自動的に推論を調整",
-            "released": "2025-08"
+            "description": "汎用GPT-5。基本モデル。",
+            "released": "2025-08-07"
         },
+        # 軽量モデル群
         "gpt-5-mini-2025-08-07": {
             "name": "GPT-5 Mini",
-            "input_tokens": 272_000,
+            "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "高速で経済的なバージョン",
-            "released": "2025-08"
+            "description": "コストパフォーマンス重視。",
+            "released": "2025-08-07"
         },
         "gpt-5-nano-2025-08-07": {
             "name": "GPT-5 Nano",
-            "input_tokens": 272_000,
+            "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "最も軽量で高速なバージョン",
-            "released": "2025-08"
-        },
-        
-        # GPT-5.1 シリーズ
-        "gpt-5.1-2025": {
-            "name": "GPT-5.1",
-            "input_tokens": 272_000,
-            "output_tokens": 128_000,
-            "description": "GPT-5の改良版。より会話的で高速",
-            "released": "2025-11"
-        },
-        
-        # GPT-4.1 シリーズ
-        "gpt-4.1-2025-01-15": {
-            "name": "GPT-4.1",
-            "input_tokens": 1_000_000,
-            "output_tokens": 32_768,
-            "description": "100万トークン対応。長文処理に最適",
-            "released": "2025-01"
-        },
-        "gpt-4.1-mini-2025-01-15": {
-            "name": "GPT-4.1 Mini",
-            "input_tokens": 1_000_000,
-            "output_tokens": 32_768,
-            "description": "GPT-4.1の経済版",
-            "released": "2025-01"
-        },
-        "gpt-4.1-nano-2025-01-15": {
-            "name": "GPT-4.1 Nano",
-            "input_tokens": 1_000_000,
-            "output_tokens": 32_768,
-            "description": "最高速・最低コスト版",
-            "released": "2025-01"
-        },
-        
-        # GPT-4o シリーズ
-        "gpt-4o-2024-11-20": {
-            "name": "GPT-4o (2024-11-20)",
-            "input_tokens": 128_000,
-            "output_tokens": 16_384,
-            "description": "マルチモーダル対応の高性能版",
-            "released": "2024-11"
-        },
-        "gpt-4o-mini": {
-            "name": "GPT-4o Mini",
-            "input_tokens": 128_000,
-            "output_tokens": 16_384,
-            "description": "コスト効率重視版",
-            "released": "2024-07"
-        },
-        
-        # o1 シリーズ（推論特化）
-        "o1-preview": {
-            "name": "o1 Preview",
-            "input_tokens": 128_000,
-            "output_tokens": 32_768,
-            "description": "高度な推論タスクに特化",
-            "released": "2024-09"
-        },
-        "o1-mini": {
-            "name": "o1 Mini",
-            "input_tokens": 128_000,
-            "output_tokens": 65_536,
-            "description": "効率的な推論モデル",
-            "released": "2024-09"
+            "description": "オンデバイス連携や超高速処理向け。",
+            "released": "2025-08-07"
         },
     },
-    
+
     # ==================== Anthropic (Claude) ====================
+    # ID形式修正: バージョンのドット→ハイフン、日付→YYYYMMDD
     "Anthropic (Claude)": {
-        # Claude Sonnet 4 シリーズ
-        "claude-sonnet-4-20250514": {
-            "name": "Claude Sonnet 4",
+        "claude-opus-4-5-20251101": {
+            "name": "Claude Opus 4.5",
             "input_tokens": 200_000,
-            "input_tokens_extended": 1_000_000,  # Beta機能
-            "output_tokens": 16_384,
-            "description": "最新Claude。100万トークン対応（Beta）",
-            "released": "2025-05",
-            "note": "1M tokens requires beta header: context-1m-2025-08-07"
+            "output_tokens": 64_000,        # コーディング・エージェント特化
+            "description": "2025年11月リリースの最上位モデル。エージェント性能最高峰。",
+            "released": "2025-11-24"        # API IDの日付とリリース日はズレることがあるためID優先
         },
-        "claude-sonnet-4.5-20250929": {
+        "claude-sonnet-4-5-20250929": {
             "name": "Claude Sonnet 4.5",
             "input_tokens": 200_000,
-            "input_tokens_extended": 1_000_000,  # Beta機能
-            "output_tokens": 16_384,
-            "description": "エージェントタスクに最適化",
-            "released": "2025-09",
-            "note": "1M tokens requires beta header"
+            "output_tokens": 64_000,
+            "description": "バランス型ハイエンド。New Sonnet。",
+            "released": "2025-09-29"
         },
-        
-        # Claude 3.5 シリーズ
-        "claude-3-5-sonnet-20241022": {
-            "name": "Claude 3.5 Sonnet",
+        "claude-haiku-4-5-20251001": {
+            "name": "Claude Haiku 4.5",
             "input_tokens": 200_000,
-            "output_tokens": 8_192,
-            "description": "バランスの取れた高性能版",
-            "released": "2024-10"
-        },
-        "claude-3-5-haiku-20241022": {
-            "name": "Claude 3.5 Haiku",
-            "input_tokens": 200_000,
-            "output_tokens": 8_192,
-            "description": "高速・低コスト版",
-            "released": "2024-10"
-        },
-        
-        # Claude 3 シリーズ
-        "claude-3-opus-20240229": {
-            "name": "Claude 3 Opus",
-            "input_tokens": 200_000,
-            "output_tokens": 4_096,
-            "description": "最高性能（旧世代）",
-            "released": "2024-02"
-        },
-        "claude-3-sonnet-20240229": {
-            "name": "Claude 3 Sonnet",
-            "input_tokens": 200_000,
-            "output_tokens": 4_096,
-            "description": "バランス型（旧世代）",
-            "released": "2024-02"
-        },
-        "claude-3-haiku-20240307": {
-            "name": "Claude 3 Haiku",
-            "input_tokens": 200_000,
-            "output_tokens": 4_096,
-            "description": "高速版（旧世代）",
-            "released": "2024-03"
+            "output_tokens": 32_000,
+            "description": "最速・低コストモデル。",
+            "released": "2025-10-01"
         },
     },
-    
+
     # ==================== Google (Gemini) ====================
     "Google (Gemini)": {
-        # Gemini 3 シリーズ
-        "gemini-3-pro-preview-11-2025": {
-            "name": "Gemini 3 Pro (Preview)",
-            "input_tokens": 1_048_576,  # 1M tokens
-            "output_tokens": 65_535,
-            "description": "最新Preview版。100万トークン対応",
-            "released": "2025-11",
-            "note": "Preview版 - 変更の可能性あり"
+        # 11月20日発表のGemini 3系列
+        "gemini-3-pro-preview": {
+            "name": "Gemini 3 Pro Preview",
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "次世代Gemini 3。マルチモーダル推論強化。",
+            "released": "2025-11-20"
         },
-        
-        # Gemini 2.5 シリーズ
         "gemini-2.5-pro": {
             "name": "Gemini 2.5 Pro",
-            "input_tokens": 1_048_576,  # 1M tokens
-            "output_tokens": 65_535,
-            "description": "高性能版。超長文処理対応",
-            "released": "2025-05"
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "安定版ハイエンド。長いコンテキストに強い。",
+            "released": "2025-06-17"
         },
         "gemini-2.5-flash": {
             "name": "Gemini 2.5 Flash",
-            "input_tokens": 1_048_576,  # 1M tokens
-            "output_tokens": 65_535,
-            "description": "高速・経済版",
-            "released": "2025-05"
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "高速・低レイテンシモデル。",
+            "released": "2025-06"
         },
-        "gemini-2.0-flash-exp": {
-            "name": "Gemini 2.0 Flash (Experimental)",
-            "input_tokens": 1_048_576,  # 1M tokens
-            "output_tokens": 65_535,
-            "description": "実験版。最新機能をテスト",
-            "released": "2024-12"
-        },
-        
-        # Gemini 1.5 シリーズ
-        "gemini-1.5-pro": {
-            "name": "Gemini 1.5 Pro",
-            "input_tokens": 2_097_152,  # 2M tokens
-            "output_tokens": 65_535,
-            "description": "200万トークン対応の超長文版",
-            "released": "2024-05",
-            "note": "2M tokens available to all developers"
-        },
-        "gemini-1.5-flash": {
-            "name": "Gemini 1.5 Flash",
-            "input_tokens": 1_048_576,  # 1M tokens
-            "output_tokens": 65_535,
-            "description": "高速処理版",
-            "released": "2024-05"
-        },
-        
-        # Gemini 1.0 シリーズ
-        "gemini-1.0-pro": {
-            "name": "Gemini 1.0 Pro",
-            "input_tokens": 32_768,
-            "output_tokens": 8_192,
-            "description": "初期版（レガシー）",
-            "released": "2023-12"
+        "gemini-2.5-flash-lite": {
+            "name": "Gemini 2.5 Flash Lite",
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "最軽量レイテンシモデル。",
+            "released": "2025-06"
         },
     }
 }
