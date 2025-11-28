@@ -202,22 +202,67 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
         # responsesエンドポイントはsystem promptとuser promptを統合
         combined_prompt = f"{system_prompt}\n\n{user_prompt}"
         
-        # Responses APIは max_output_tokens を使用
-        response = client.responses.create(
-            model=model,
-            input=combined_prompt,
-            max_output_tokens=max_tokens  # Responses API用
-        )
-        
-        # Responses APIのレスポンス形式からテキストを抽出
-        output_text = ""
-        for item in response.output:
-            if hasattr(item, "content"):
-                for content in item.content:
-                    if hasattr(content, "text"):
-                        output_text += content.text
-        
-        return output_text if output_text else response.output_text
+        try:
+            # Responses APIは max_output_tokens を使用
+            response = client.responses.create(
+                model=model,
+                input=combined_prompt,
+                max_output_tokens=max_tokens  # Responses API用
+            )
+            
+            # レスポンスからテキストを抽出（複数の方法を試す）
+            output_text = ""
+            
+            # 方法1: output属性からテキストを抽出
+            if hasattr(response, 'output') and response.output is not None:
+                try:
+                    for item in response.output:
+                        if hasattr(item, "content") and item.content is not None:
+                            for content in item.content:
+                                if hasattr(content, "text"):
+                                    output_text += content.text
+                except (TypeError, AttributeError) as e:
+                    print(f"⚠️ output属性の解析エラー: {e}")
+            
+            # 方法2: output_text属性を直接取得
+            if not output_text and hasattr(response, 'output_text') and response.output_text:
+                output_text = response.output_text
+            
+            # 方法3: レスポンス全体をダンプして確認（デバッグ用）
+            if not output_text:
+                import json
+                try:
+                    response_dict = response.model_dump() if hasattr(response, 'model_dump') else {}
+                    print(f"⚠️ GPT-5 Pro レスポンス構造（デバッグ）:")
+                    print(json.dumps(response_dict, indent=2, ensure_ascii=False)[:1000])
+                    
+                    # レスポンス構造から推測して取得
+                    if 'output' in response_dict and response_dict['output']:
+                        for item in response_dict['output']:
+                            if isinstance(item, dict) and 'content' in item and item['content']:
+                                for content in item['content']:
+                                    if isinstance(content, dict) and 'text' in content:
+                                        output_text += content['text']
+                except Exception as e:
+                    print(f"⚠️ レスポンス解析エラー: {e}")
+                    # 最終手段: レスポンス全体を文字列化
+                    output_text = str(response)
+            
+            if output_text:
+                return output_text
+            else:
+                raise ValueError(
+                    "GPT-5 Proのレスポンスからテキストを抽出できませんでした。\n"
+                    f"レスポンスタイプ: {type(response)}\n"
+                    f"利用可能な属性: {dir(response)}"
+                )
+                
+        except Exception as e:
+            # より詳細なエラー情報を提供
+            error_msg = f"GPT-5 Pro API エラー: {str(e)}"
+            if hasattr(e, 'response'):
+                error_msg += f"\nレスポンス: {e.response}"
+            raise Exception(error_msg)
     
     # 通常のchat/completionsエンドポイント
     api_params = {
