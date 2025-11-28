@@ -61,79 +61,88 @@ if 'uploaded_file_name' not in st.session_state:
     st.session_state.uploaded_file_name = None
 
 # OpenAI API設定
-st.sidebar.subheader("AI設定")
+st.sidebar.subheader("🔑 APIキー設定")
 
-# プロバイダー選択
-ai_provider = st.sidebar.selectbox(
-    "AIプロバイダー",
-    ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"],
-    index=0,
-    help="使用するAIプロバイダーを選択"
+# すべてのAPIキーを一度に表示
+openai_api_key = st.sidebar.text_input(
+    "OpenAI APIキー",
+    type="password",
+    help="OpenAI APIキーを入力してください",
+    value=os.getenv("OPENAI_API_KEY", "")
 )
 
-# プロバイダー別のAPIキー入力
-if ai_provider == "OpenAI":
-    api_key = st.sidebar.text_input(
-        "OpenAI APIキー",
-        type="password",
-        help="OpenAI APIキーを入力してください",
-        value=os.getenv("OPENAI_API_KEY", "")
-    )
-    
-elif ai_provider == "Anthropic (Claude)":
-    api_key = st.sidebar.text_input(
-        "Anthropic APIキー",
-        type="password",
-        help="Anthropic APIキーを入力してください",
-        value=os.getenv("ANTHROPIC_API_KEY", "")
-    )
-    
-else:  # Google Gemini
-    api_key = st.sidebar.text_input(
-        "Google API キー",
-        type="password",
-        help="Google API キーを入力してください",
-        value=os.getenv("GOOGLE_API_KEY", "")
-    )
+anthropic_api_key = st.sidebar.text_input(
+    "Anthropic APIキー",
+    type="password",
+    help="Anthropic APIキーを入力してください",
+    value=os.getenv("ANTHROPIC_API_KEY", "")
+)
+
+google_api_key = st.sidebar.text_input(
+    "Google APIキー",
+    type="password",
+    help="Google API キーを入力してください",
+    value=os.getenv("GOOGLE_API_KEY", "")
+)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🤖 モデル選択")
 
 # モデル仕様の読み込み
 import model_specs
+import importlib
 
-available_models = model_specs.get_available_models(ai_provider)
+# モジュールを強制的にリロード（開発時のみ、本番では不要）
+importlib.reload(model_specs)
 
-# モデル選択
-if available_models:
-    # モデルIDのリストを作成（リリース日順）
-    model_list = []
-    for model_id, info in available_models.items():
-        model_list.append({
+# すべてのプロバイダーのモデルを統合
+all_models = []
+for provider_name in ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"]:
+    provider_models = model_specs.get_available_models(provider_name)
+    for model_id, info in provider_models.items():
+        all_models.append({
             'id': model_id,
             'name': info['name'],
+            'provider': provider_name,
             'released': info.get('released', ''),
             'description': info['description']
         })
-    
-    # リリース日でソート（新しい順）
-    model_list.sort(key=lambda x: x['released'], reverse=True)
-    
-    # セレクトボックス用のオプション作成
-    model_options = [f"{m['name']} - {m['description']}" for m in model_list]
-    model_ids = [m['id'] for m in model_list]
-    
-    selected_index = st.sidebar.selectbox(
-        "モデル選択",
-        range(len(model_options)),
-        format_func=lambda i: model_options[i],
+
+# プロバイダー別にグループ化して表示
+model_options = []
+model_id_map = {}
+for model in sorted(all_models, key=lambda x: (x['provider'], x['released']), reverse=True):
+    display_name = f"{model['provider']}: {model['name']} - {model['description']}"
+    model_options.append(display_name)
+    model_id_map[display_name] = (model['id'], model['provider'])
+
+# モデル選択
+if model_options:
+    selected_display_name = st.sidebar.selectbox(
+        "使用するモデル",
+        model_options,
         index=0,
-        help="使用するモデルを選択"
+        help="全プロバイダーのモデルから選択できます"
     )
     
-    selected_model = model_ids[selected_index]
-    selected_model_info = available_models[selected_model]
+    # 選択されたモデルのIDとプロバイダーを取得
+    selected_model, ai_provider = model_id_map[selected_display_name]
+    
+    # 選択されたプロバイダーに応じてAPIキーを設定
+    if ai_provider == "OpenAI":
+        api_key = openai_api_key
+    elif ai_provider == "Anthropic (Claude)":
+        api_key = anthropic_api_key
+    else:  # Google (Gemini)
+        api_key = google_api_key
     
     # モデル情報の表示
+    selected_model_info = model_specs.get_model_info(ai_provider, selected_model)
+    
     with st.sidebar.expander("📊 選択中のモデル情報", expanded=False):
+        st.write(f"**プロバイダー**: {ai_provider}")
         st.write(f"**モデル名**: {selected_model_info['name']}")
+        st.write(f"**モデルID**: `{selected_model}`")
         st.write(f"**リリース**: {selected_model_info.get('released', 'N/A')}")
         
         # トークン制限情報

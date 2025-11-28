@@ -78,7 +78,7 @@ def compress_markdown_for_model(md_content, max_tokens=30000):
     return compressed
 
 
-def generate_report(md_content, instruction, api_key, model, provider="OpenAI", max_tokens=8000):
+def generate_report(md_content, instruction, api_key, model, provider="OpenAI", max_tokens=None):
     """
     Markdownコンテンツから指示に基づいてレポートを生成
     
@@ -94,8 +94,8 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
         使用するモデル名
     provider : str
         AIプロバイダー（"OpenAI", "Anthropic (Claude)", "Google (Gemini)"）
-    max_tokens : int
-        最大出力トークン数
+    max_tokens : int, optional
+        最大出力トークン数（Noneの場合は自動設定）
     
     Returns:
     --------
@@ -110,19 +110,29 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
         if model_info:
             # 拡張トークンがあれば使用
             max_input_tokens = model_info.get('input_tokens_extended', model_info['input_tokens'])
+            model_output_tokens = model_info.get('output_tokens', 4096)
+            
+            # max_tokensが指定されていない場合は、モデルの出力制限の50%を使用
+            if max_tokens is None:
+                max_tokens = min(8000, int(model_output_tokens * 0.5))
         else:
             # デフォルト値（プロバイダー別）
             if "OpenAI" in provider:
                 max_input_tokens = 100_000
+                max_tokens = max_tokens or 4096
             elif "Anthropic" in provider:
                 max_input_tokens = 180_000
+                max_tokens = max_tokens or 4096
             elif "Google" in provider or "Gemini" in provider:
                 max_input_tokens = 900_000
+                max_tokens = max_tokens or 8000
             else:
                 max_input_tokens = 100_000
+                max_tokens = max_tokens or 4096
     except:
         # フォールバック
         max_input_tokens = 100_000
+        max_tokens = max_tokens or 4096
     
     # コンテンツのトークン数をチェック
     estimated_tokens = estimate_tokens(md_content)
@@ -180,15 +190,24 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
     
     client = OpenAI(api_key=api_key)
     
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
+    # GPT-5シリーズは max_completion_tokens を使用
+    # その他のモデルは max_tokens を使用
+    api_params = {
+        "model": model,
+        "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ],
-        max_tokens=max_tokens,
-        temperature=0.7
-    )
+        "temperature": 0.7
+    }
+    
+    # GPT-5, o1シリーズは max_completion_tokens
+    if model.startswith(('gpt-5', 'o1')):
+        api_params["max_completion_tokens"] = max_tokens
+    else:
+        api_params["max_tokens"] = max_tokens
+    
+    response = client.chat.completions.create(**api_params)
     
     return response.choices[0].message.content
 
