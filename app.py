@@ -358,10 +358,13 @@ with tab2:
                         
                         st.success("✅ レポート生成完了")
                         
-                        # 結果表示（整形済みMarkdown）
+                        # 結果表示（整形済みMarkdown・横スクロール防止）
                         st.markdown("---")
                         st.subheader("📄 生成されたレポート")
-                        st.markdown(result)
+                        st.markdown(
+                            f'<div style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{result}</div>',
+                            unsafe_allow_html=True
+                        )
                         
                         # 履歴に保存
                         output_record = {
@@ -400,7 +403,13 @@ with tab3:
         st.write(f"**保存されているレポート数**: {len(st.session_state.output_history)}")
         
         for idx, record in enumerate(st.session_state.output_history):
-            with st.expander(f"📄 {record['timestamp']} - {record['output_type']}", expanded=(idx == 0)):
+            # レポートの文字数を計算
+            content_length = len(record['content'])
+            
+            # 改善されたタイトル: 日時 | モデル | ファイル | 文字数
+            title = f"📄 {record['timestamp']} | {record['model']} | {record['zip_file']} | {content_length:,}字"
+            
+            with st.expander(title, expanded=(idx == 0)):
                 # メタデータ表示
                 col1, col2 = st.columns(2)
                 with col1:
@@ -410,14 +419,18 @@ with tab3:
                 with col2:
                     st.write(f"**AIプロバイダー**: {record['provider']}")
                     st.write(f"**モデル**: {record['model']}")
+                    st.write(f"**文字数**: {content_length:,}字")
                     
                 if record['custom_instruction'] != "-":
                     st.write(f"**カスタム指示**: {record['custom_instruction']}")
                 
                 st.markdown("---")
                 
-                # レポート内容表示（整形済み）
-                st.markdown(record['content'])
+                # レポート内容表示（整形済み・横スクロール防止）
+                st.markdown(
+                    f'<div style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{record["content"]}</div>',
+                    unsafe_allow_html=True
+                )
                 
                 # ダウンロードボタン
                 st.download_button(

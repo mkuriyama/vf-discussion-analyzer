@@ -197,8 +197,20 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
     
     client = OpenAI(api_key=api_key)
     
-    # GPT-5シリーズは max_completion_tokens を使用
-    # その他のモデルは max_tokens を使用
+    # GPT-5 Proは専用のresponsesエンドポイントを使用
+    if "gpt-5-pro" in model.lower():
+        # responsesエンドポイントはsystem promptとuser promptを統合
+        combined_prompt = f"{system_prompt}\n\n{user_prompt}"
+        
+        response = client.responses.create(
+            model=model,
+            input=combined_prompt,
+            max_completion_tokens=max_tokens
+        )
+        
+        return response.output
+    
+    # 通常のchat/completionsエンドポイント
     api_params = {
         "model": model,
         "messages": [
