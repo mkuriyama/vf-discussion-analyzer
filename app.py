@@ -489,35 +489,46 @@ with tab5:
     ANTHROPIC_API_KEY = "your-anthropic-key"
     GOOGLE_API_KEY = "your-google-key"
     ```
+    """)
     
-    ### 対応モデル一覧
+    st.markdown("---")
+    st.markdown("### 📋 対応モデル一覧")
     
-    #### OpenAI
-    - **gpt-4o-2024-11-20**: 最新のGPT-4o（推奨）
-    - **gpt-4o-mini**: コスト効率の良い小型版
-    - **o1-preview/o1-mini**: 高度な推論モデル
-    - **gpt-4-turbo**: 高性能版
+    # 動的にモデル情報を表示
+    for provider_name in ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"]:
+        st.markdown(f"#### {provider_name}")
+        
+        provider_models = model_specs.get_available_models(provider_name)
+        
+        # モデル情報をテーブル形式で表示
+        model_data = []
+        for model_id, info in provider_models.items():
+            input_tokens = info.get('input_tokens', 0)
+            output_tokens = info.get('output_tokens', 0)
+            
+            # 拡張トークンがあれば表示
+            if 'input_tokens_extended' in info:
+                input_str = f"{input_tokens:,} ({info['input_tokens_extended']:,}拡張)"
+            else:
+                input_str = f"{input_tokens:,}"
+            
+            model_data.append({
+                'モデル': info['name'],
+                'モデルID': f"`{model_id}`",
+                '入力トークン': input_str,
+                '出力トークン': f"{output_tokens:,}",
+                '説明': info['description']
+            })
+        
+        # DataFrameで表示
+        import pandas as pd
+        df = pd.DataFrame(model_data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+        
+        st.markdown("")
     
-    #### Anthropic (Claude)
-    - **claude-sonnet-4-20250514**: 最新Claude（推奨）
-    - **claude-3-5-sonnet**: バランス型
-    - **claude-3-5-haiku**: 高速・低コスト
-    - **claude-3-opus**: 最高性能
-    
-    #### Google (Gemini)
-    - **gemini-2.0-flash-exp**: 最新実験版（推奨）
-    - **gemini-1.5-pro**: 高性能版
-    - **gemini-1.5-flash**: 高速版
-    
-    ### トークン制限について
-    
-    各モデルには入力トークン数の制限があります：
-    - **GPT-4o**: 128K トークン
-    - **Claude Sonnet 4**: 200K トークン
-    - **Gemini 1.5 Pro**: 2M トークン
-    
-    大きなファイルの場合、自動的に要約して送信します。
-    
+    st.markdown("---")
+    st.markdown("""
     ### APIキーの取得
     
     #### OpenAI
@@ -532,11 +543,14 @@ with tab5:
     1. https://aistudio.google.com/app/apikey にアクセス
     2. Create API keyをクリック
     
-    ### ファイルサイズ制限
+    ### 💡 Tips
     
-    - アップロード可能なZIPファイルサイズ: 最大200MB
-    - Markdownファイルが10MB超の場合は自動要約
+    - **トークン制限**: 各モデルの入力トークン数は上記の表を参照
+    - **大きなファイル**: トークン制限の80%を超えると自動圧縮
+    - **GPT-5 Pro**: TPM制限があるため、大きなファイルは自動的に20,000トークンに制限されます
+    - **コスト最適化**: mini/flash/haiku モデルは経済的
     """)
+
 
 # フッター
 st.markdown("---")

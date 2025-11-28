@@ -137,8 +137,15 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
     # コンテンツのトークン数をチェック
     estimated_tokens = estimate_tokens(md_content)
     
-    # 安全マージンを考慮（システムプロンプト + ユーザープロンプト）
-    safe_limit = int(max_input_tokens * 0.8)  # 80%を上限とする
+    # GPT-5 Proは特別なTPM制限があるため、より厳しい制限を適用
+    if "gpt-5-pro" in model.lower():
+        # TPM制限: 30,000 tokens/min
+        # 出力トークンも考慮して、入力は最大20,000トークンに制限
+        safe_limit = min(20_000, int(max_input_tokens * 0.5))
+        print(f"⚠️ GPT-5 Pro使用: TPM制限のため入力を{safe_limit:,}トークンに制限")
+    else:
+        # 通常のモデル: 80%を上限とする
+        safe_limit = int(max_input_tokens * 0.8)
     
     # トークンウィンドウに余裕がある場合は圧縮しない
     if estimated_tokens <= safe_limit:
@@ -197,8 +204,7 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.7
+        ]
     }
     
     # GPT-5, o1シリーズは max_completion_tokens
@@ -206,6 +212,10 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
         api_params["max_completion_tokens"] = max_tokens
     else:
         api_params["max_tokens"] = max_tokens
+    
+    # GPT-5とo1シリーズはtemperatureをサポートしない（デフォルト1のみ）
+    if not model.startswith(('gpt-5', 'o1')):
+        api_params["temperature"] = 0.7
     
     response = client.chat.completions.create(**api_params)
     
