@@ -13,7 +13,7 @@ from email.mime.multipart import MIMEMultipart
 
 # ページ設定
 st.set_page_config(
-    page_title="議論データ分析アプリ",
+    page_title="VFデータ変換・結果出力アプリ",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -44,35 +44,156 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # タイトル
-st.markdown('<div class="main-header">📊 議論データ分析アプリ</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">📊 VFデータ変換・結果出力アプリ（プロトタイプ）</div>', unsafe_allow_html=True)
 st.markdown("専門家AIによる会議録を分析し、目的に合わせたレポートを生成します")
 
 # サイドバー設定
 st.sidebar.header("⚙️ 設定")
 
 # OpenAI API設定
-st.sidebar.subheader("OpenAI API設定")
-api_key = st.sidebar.text_input(
-    "APIキー",
-    type="password",
-    help="OpenAI APIキーを入力してください",
-    value=os.getenv("OPENAI_API_KEY", "")
+st.sidebar.subheader("AI設定")
+
+# プロバイダー選択
+ai_provider = st.sidebar.selectbox(
+    "AIプロバイダー",
+    ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"],
+    index=0,
+    help="使用するAIプロバイダーを選択"
 )
 
-model_options = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-4-turbo",
-    "gpt-3.5-turbo"
-]
-selected_model = st.sidebar.selectbox(
-    "モデル選択",
-    model_options,
-    index=0,
-    help="使用するOpenAIモデルを選択"
-)
+# プロバイダー別のAPIキー入力
+if ai_provider == "OpenAI":
+    api_key = st.sidebar.text_input(
+        "OpenAI APIキー",
+        type="password",
+        help="OpenAI APIキーを入力してください",
+        value=os.getenv("OPENAI_API_KEY", "")
+    )
+    
+elif ai_provider == "Anthropic (Claude)":
+    api_key = st.sidebar.text_input(
+        "Anthropic APIキー",
+        type="password",
+        help="Anthropic APIキーを入力してください",
+        value=os.getenv("ANTHROPIC_API_KEY", "")
+    )
+    
+else:  # Google Gemini
+    api_key = st.sidebar.text_input(
+        "Google API キー",
+        type="password",
+        help="Google API キーを入力してください",
+        value=os.getenv("GOOGLE_API_KEY", "")
+    )
+
+# モデル仕様の読み込み
+import model_specs
+
+available_models = model_specs.get_available_models(ai_provider)
+
+# モデル選択
+if available_models:
+    # モデルIDのリストを作成（リリース日順）
+    model_list = []
+    for model_id, info in available_models.items():
+        model_list.append({
+            'id': model_id,
+            'name': info['name'],
+            'released': info.get('released', ''),
+            'description': info['description']
+        })
+    
+    # リリース日でソート（新しい順）
+    model_list.sort(key=lambda x: x['released'], reverse=True)
+    
+    # セレクトボックス用のオプション作成
+    model_options = [f"{m['name']} - {m['description']}" for m in model_list]
+    model_ids = [m['id'] for m in model_list]
+    
+    selected_index = st.sidebar.selectbox(
+        "モデル選択",
+        range(len(model_options)),
+        format_func=lambda i: model_options[i],
+        index=0,
+        help="使用するモデルを選択"
+    )
+    
+    selected_model = model_ids[selected_index]
+    selected_model_info = available_models[selected_model]
+    
+    # モデル情報の表示
+    with st.sidebar.expander("📊 選択中のモデル情報", expanded=False):
+        st.write(f"**モデル名**: {selected_model_info['name']}")
+        st.write(f"**リリース**: {selected_model_info.get('released', 'N/A')}")
+        
+        # トークン制限情報
+        input_tokens = selected_model_info['input_tokens']
+        output_tokens = selected_model_info['output_tokens']
+        
+        st.write(f"**入力トークン**: {input_tokens:,} tokens")
+        if 'input_tokens_extended' in selected_model_info:
+            st.write(f"  *(拡張: {selected_model_info['input_tokens_extended']:,} tokens)*")
+        st.write(f"**出力トークン**: {output_tokens:,} tokens")
+        
+        if 'note' in selected_model_info:
+            st.info(selected_model_info['note'])
+    
+    # ファイルサイズとの比較表示
+    if st.session_state.current_md_content:
+        compatibility = model_specs.check_token_compatibility(
+            ai_provider,
+            selected_model,
+            st.session_state.current_md_content
+        )
+        
+        with st.sidebar.expander("⚖️ ファイル互換性チェック", expanded=True):
+            # ステータス表示
+            if compatibility['status'] == 'safe':
+                st.success("✅ 余裕あり - データは圧縮せずに処理可能")
+                status_color = "green"
+            elif compatibility['status'] == 'warning':
+                st.warning("⚠️ 注意 - データ量が多め")
+                status_color = "orange"
+            else:
+                st.error("🔴 制限近い - データを自動圧縮します")
+                status_color = "red"
+            
+            # プログレスバー
+            st.progress(
+                min(compatibility['usage_percentage'] / 100, 1.0),
+                text=f"トークン使用率: {compatibility['usage_percentage']:.1f}%"
+            )
+            
+            st.write(f"**推定トークン数**: {compatibility['estimated_tokens']:,}")
+            st.write(f"**モデル上限**: {compatibility['max_tokens']:,}")
+            
+            # 推奨モデル表示
+            if compatibility['compression_needed']:
+                st.markdown("---")
+                st.write("**💡 より大きいモデルを推奨:**")
+                
+                recommendations = model_specs.get_optimal_models(
+                    ai_provider,
+                    st.session_state.current_md_content
+                )
+                
+                for rec in recommendations[:3]:  # 上位3つを表示
+                    if rec['is_safe']:
+                        st.write(f"✅ {rec['model_name']} ({rec['usage_percentage']:.1f}%)")
+else:
+    st.sidebar.error("モデル情報の読み込みに失敗しました")
 
 st.sidebar.markdown("---")
+
+# セッションステートの初期化
+if 'output_history' not in st.session_state:
+    st.session_state.output_history = []
+if 'current_md_content' not in st.session_state:
+    st.session_state.current_md_content = None
+if 'current_md_path' not in st.session_state:
+    st.session_state.current_md_path = None
+if 'uploaded_file_name' not in st.session_state:
+    st.session_state.uploaded_file_name = None
 
 # ファイルアップロード
 st.sidebar.subheader("📁 ファイルアップロード")
@@ -82,14 +203,118 @@ uploaded_file = st.sidebar.file_uploader(
     help="議論データが含まれるZIPファイルをアップロード"
 )
 
+# ファイルがアップロードされたら、Markdown変換を実行
+if uploaded_file is not None:
+    # 新しいファイルがアップロードされた場合のみ処理
+    if st.session_state.uploaded_file_name != uploaded_file.name:
+        st.session_state.uploaded_file_name = uploaded_file.name
+        
+        with st.sidebar:
+            with st.spinner("📄 Markdownに変換中..."):
+                import processor
+                import tempfile
+                
+                try:
+                    # 一時ファイルに保存
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = tmp_file.name
+                    
+                    # Markdown変換
+                    md_path = processor.convert_zip_to_markdown(tmp_path)
+                    
+                    with open(md_path, 'r', encoding='utf-8') as f:
+                        st.session_state.current_md_content = f.read()
+                        st.session_state.current_md_path = md_path
+                    
+                    # クリーンアップ
+                    os.unlink(tmp_path)
+                    
+                    st.success(f"✅ 変換完了: {uploaded_file.name}")
+                    
+                except Exception as e:
+                    st.error(f"❌ 変換エラー: {str(e)}")
+                    st.session_state.current_md_content = None
+                    st.session_state.current_md_path = None
+
 # メインエリア
-tab1, tab2, tab3 = st.tabs(["📄 レポート生成", "ℹ️ 使い方", "🔧 詳細設定"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📄 Markdown閲覧", "📝 レポート生成", "📚 出力結果一覧", "ℹ️ 使い方", "🔧 詳細設定"])
 
 with tab1:
-    if uploaded_file is None:
+    st.subheader("📄 変換されたMarkdownファイル")
+    
+    if st.session_state.current_md_content is None:
         st.info("👈 サイドバーからZIPファイルをアップロードしてください")
     else:
-        st.success(f"✅ ファイルアップロード完了: {uploaded_file.name}")
+        st.success(f"✅ ファイル: {st.session_state.uploaded_file_name}")
+        
+        # Markdownの表示（整形済み）
+        st.markdown("---")
+        st.markdown(st.session_state.current_md_content)
+        
+        # ダウンロードボタン
+        st.markdown("---")
+        st.download_button(
+            label="📥 Markdownファイルをダウンロード",
+            data=st.session_state.current_md_content,
+            file_name=f"{Path(st.session_state.uploaded_file_name).stem}_converted.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
+
+with tab4:
+    st.markdown("""
+    ## 📖 使い方
+    
+    ### 1. ファイルのアップロード
+    サイドバーから議論データが含まれるZIPファイルをアップロードしてください。
+    自動的にMarkdownに変換されます。
+    
+    ### 2. Markdownの確認
+    「📄 Markdown閲覧」タブで変換されたMarkdownファイルを確認できます。
+    
+    ### 3. AIプロバイダーとモデルの選択
+    サイドバーで使用するAIプロバイダー（OpenAI/Anthropic/Google）とモデルを選択します。
+    対応するAPIキーを設定してください。
+    
+    ### 4. レポートの生成
+    「📝 レポート生成」タブでレポートタイプを選択し、生成ボタンをクリックします。
+    
+    - **400字版**: 経営層向けの簡潔なサマリー
+    - **2000字版**: バランスの取れた構造化レポート（推奨）
+    - **5000字版**: 詳細な分析レポート
+    - **カスタム**: 自由に指示を記述
+    
+    ### 5. 結果の確認と保存
+    - 生成されたレポートはその場で確認できます
+    - 「📚 出力結果一覧」タブで過去のレポートも閲覧可能
+    - 各レポートは個別にダウンロードできます
+    
+    ## 💡 Tips
+    
+    ### トークン制限エラーが出た場合
+    - より小さいモデルを選択（例: gpt-4o-mini）
+    - 短いレポートタイプを選択（400字版）
+    - カスタム指示で具体的な焦点を絞る
+    
+    ### 各AIプロバイダーの特徴
+    - **OpenAI**: 最新のGPTモデル、高速で高品質
+    - **Anthropic (Claude)**: 長文理解に優れる、詳細な分析
+    - **Google (Gemini)**: コスト効率が良い、マルチモーダル対応
+    
+    ### コスト最適化
+    - 小さいモデル（mini/nano）を優先的に使用
+    - 必要な情報のみを含むカスタム指示を活用
+    - 同じデータで複数試す場合は出力結果一覧を活用
+    """)
+
+with tab5:
+    st.subheader("📝 AIレポート生成")
+    
+    if st.session_state.current_md_content is None:
+        st.info("👈 まずサイドバーからZIPファイルをアップロードしてください")
+    else:
+        st.success(f"✅ ファイル: {st.session_state.uploaded_file_name}")
         
         # 出力タイプ選択
         st.subheader("📝 出力タイプ選択")
@@ -115,57 +340,20 @@ with tab1:
                 placeholder="例: 主要な意見を3つに絞り、それぞれについて賛成・反対の意見を対比させてください。全体で1500字程度でまとめてください。"
             )
         
-        # 出力オプション
-        st.subheader("📤 出力オプション")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            enable_download = st.checkbox("ダウンロード機能を有効化", value=True)
-        
-        with col2:
-            enable_email = st.checkbox("メール送信機能を有効化", value=False)
-        
-        # メール設定
-        email_address = None
-        if enable_email:
-            email_address = st.text_input(
-                "送信先メールアドレス",
-                placeholder="example@example.com"
-            )
-        
         st.markdown("---")
         
         # 生成ボタン
         if st.button("🚀 レポート生成", type="primary", use_container_width=True):
             if not api_key:
-                st.error("❌ OpenAI APIキーを設定してください")
+                st.error(f"❌ {ai_provider} のAPIキーを設定してください")
             elif "カスタム" in output_type and not custom_instruction:
                 st.error("❌ カスタム指示を入力してください")
             else:
-                # プレースホルダー（実装は次のステップ）
-                with st.spinner("🔄 データを処理中..."):
-                    import time
-                    import processor
+                with st.spinner("🔄 AIでレポート生成中..."):
                     import ai_generator
+                    from datetime import datetime
                     
                     try:
-                        # 一時ファイルに保存
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
-                            tmp_file.write(uploaded_file.getvalue())
-                            tmp_path = tmp_file.name
-                        
-                        # Step 1: ZIP → Markdown変換
-                        st.info("📄 Step 1/3: ZIPファイルをMarkdownに変換中...")
-                        md_path = processor.convert_zip_to_markdown(tmp_path)
-                        
-                        with open(md_path, 'r', encoding='utf-8') as f:
-                            md_content = f.read()
-                        
-                        st.success("✅ Markdown変換完了")
-                        
-                        # Step 2: AI処理
-                        st.info("🤖 Step 2/3: AIでレポート生成中...")
-                        
                         # 指示文の準備
                         if "400字" in output_type:
                             instruction = "以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。"
@@ -196,58 +384,88 @@ with tab1:
                         else:
                             instruction = custom_instruction
                         
-                        # AI生成
+                        # AI生成（プロバイダー対応）
                         result = ai_generator.generate_report(
-                            md_content=md_content,
+                            md_content=st.session_state.current_md_content,
                             instruction=instruction,
                             api_key=api_key,
-                            model=selected_model
+                            model=selected_model,
+                            provider=ai_provider
                         )
                         
                         st.success("✅ レポート生成完了")
                         
-                        # Step 3: 結果表示
-                        st.info("📊 Step 3/3: 結果を表示中...")
-                        
-                        # 結果表示
+                        # 結果表示（整形済みMarkdown）
                         st.markdown("---")
                         st.subheader("📄 生成されたレポート")
-                        st.markdown('<div class="output-box">', unsafe_allow_html=True)
                         st.markdown(result)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # 履歴に保存
+                        output_record = {
+                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'zip_file': st.session_state.uploaded_file_name,
+                            'output_type': output_type,
+                            'custom_instruction': custom_instruction if custom_instruction else "-",
+                            'provider': ai_provider,
+                            'model': selected_model,
+                            'content': result
+                        }
+                        st.session_state.output_history.insert(0, output_record)
                         
                         # ダウンロード
-                        if enable_download:
-                            st.download_button(
-                                label="📥 レポートをダウンロード",
-                                data=result,
-                                file_name=f"discussion_report_{Path(uploaded_file.name).stem}.md",
-                                mime="text/markdown"
-                            )
-                        
-                        # メール送信
-                        if enable_email and email_address:
-                            if st.button("📧 メールで送信"):
-                                with st.spinner("送信中..."):
-                                    success = ai_generator.send_email(
-                                        recipient=email_address,
-                                        subject="議論データ分析レポート",
-                                        body=result
-                                    )
-                                    if success:
-                                        st.success(f"✅ {email_address} に送信しました")
-                                    else:
-                                        st.error("❌ メール送信に失敗しました")
-                        
-                        # クリーンアップ
-                        os.unlink(tmp_path)
+                        st.markdown("---")
+                        st.download_button(
+                            label="📥 レポートをダウンロード",
+                            data=result,
+                            file_name=f"report_{Path(st.session_state.uploaded_file_name).stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
                         
                     except Exception as e:
                         st.error(f"❌ エラーが発生しました: {str(e)}")
                         import traceback
-                        st.code(traceback.format_exc())
+                        with st.expander("詳細なエラー情報"):
+                            st.code(traceback.format_exc())
 
-with tab2:
+with tab3:
+    st.subheader("📚 出力結果一覧")
+    
+    if len(st.session_state.output_history) == 0:
+        st.info("まだレポートが生成されていません")
+    else:
+        st.write(f"**保存されているレポート数**: {len(st.session_state.output_history)}")
+        
+        for idx, record in enumerate(st.session_state.output_history):
+            with st.expander(f"📄 {record['timestamp']} - {record['output_type']}", expanded=(idx == 0)):
+                # メタデータ表示
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**生成日時**: {record['timestamp']}")
+                    st.write(f"**元ファイル**: {record['zip_file']}")
+                    st.write(f"**出力タイプ**: {record['output_type']}")
+                with col2:
+                    st.write(f"**AIプロバイダー**: {record['provider']}")
+                    st.write(f"**モデル**: {record['model']}")
+                    
+                if record['custom_instruction'] != "-":
+                    st.write(f"**カスタム指示**: {record['custom_instruction']}")
+                
+                st.markdown("---")
+                
+                # レポート内容表示（整形済み）
+                st.markdown(record['content'])
+                
+                # ダウンロードボタン
+                st.download_button(
+                    label="📥 このレポートをダウンロード",
+                    data=record['content'],
+                    file_name=f"report_{idx}_{record['timestamp'].replace(':', '-').replace(' ', '_')}.md",
+                    mime="text/markdown",
+                    key=f"download_{idx}"
+                )
+
+with tab4:
     st.markdown("""
     ## 📖 使い方
     
@@ -273,7 +491,7 @@ with tab2:
     - APIキーは安全に管理してください（Streamlit Secretsの使用を推奨）
     """)
 
-with tab3:
+with tab5:
     st.markdown("""
     ## 🔧 詳細設定
     
@@ -283,29 +501,57 @@ with tab3:
     
     ```toml
     # .streamlit/secrets.toml
-    OPENAI_API_KEY = "your-api-key-here"
+    OPENAI_API_KEY = "your-openai-key"
+    ANTHROPIC_API_KEY = "your-anthropic-key"
+    GOOGLE_API_KEY = "your-google-key"
     ```
     
-    ### 環境変数
+    ### 対応モデル一覧
     
-    以下の環境変数が利用可能です:
-    - `OPENAI_API_KEY`: OpenAI APIキー
-    - `SMTP_SERVER`: メール送信用SMTPサーバー（オプション）
-    - `SMTP_PORT`: SMTPポート（オプション）
-    - `SMTP_USER`: SMTP認証ユーザー（オプション）
-    - `SMTP_PASSWORD`: SMTP認証パスワード（オプション）
+    #### OpenAI
+    - **gpt-4o-2024-11-20**: 最新のGPT-4o（推奨）
+    - **gpt-4o-mini**: コスト効率の良い小型版
+    - **o1-preview/o1-mini**: 高度な推論モデル
+    - **gpt-4-turbo**: 高性能版
     
-    ### モデル選択について
+    #### Anthropic (Claude)
+    - **claude-sonnet-4-20250514**: 最新Claude（推奨）
+    - **claude-3-5-sonnet**: バランス型
+    - **claude-3-5-haiku**: 高速・低コスト
+    - **claude-3-opus**: 最高性能
     
-    - **gpt-4o**: 最新・最高性能（推奨）
-    - **gpt-4o-mini**: コストパフォーマンス重視
-    - **gpt-4-turbo**: 高性能・大容量
-    - **gpt-3.5-turbo**: 高速・低コスト
+    #### Google (Gemini)
+    - **gemini-2.0-flash-exp**: 最新実験版（推奨）
+    - **gemini-1.5-pro**: 高性能版
+    - **gemini-1.5-flash**: 高速版
+    
+    ### トークン制限について
+    
+    各モデルには入力トークン数の制限があります：
+    - **GPT-4o**: 128K トークン
+    - **Claude Sonnet 4**: 200K トークン
+    - **Gemini 1.5 Pro**: 2M トークン
+    
+    大きなファイルの場合、自動的に要約して送信します。
+    
+    ### APIキーの取得
+    
+    #### OpenAI
+    1. https://platform.openai.com/ にアクセス
+    2. API Keysセクションで新規作成
+    
+    #### Anthropic
+    1. https://console.anthropic.com/ にアクセス
+    2. API Keysで新規作成
+    
+    #### Google
+    1. https://aistudio.google.com/app/apikey にアクセス
+    2. Create API keyをクリック
     
     ### ファイルサイズ制限
     
     - アップロード可能なZIPファイルサイズ: 最大200MB
-    - 処理可能なMarkdownサイズ: 最大10MB
+    - Markdownファイルが10MB超の場合は自動要約
     """)
 
 # フッター
