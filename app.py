@@ -13,7 +13,7 @@ from email.mime.multipart import MIMEMultipart
 
 # ページ設定
 st.set_page_config(
-    page_title="VFデータ変換・結果出力アプリ",
+    page_title="VFデータ変換・結果出力ツール",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -44,8 +44,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # タイトル
-st.markdown('<div class="main-header">📊 VFデータ変換・結果出力アプリ（プロトタイプ）</div>', unsafe_allow_html=True)
-st.markdown("専門家AIによる会議録を分析し、目的に合わせたレポートを生成します")
+st.markdown('<div class="main-header">📊 VFデータ変換・結果出力ツール（プロトタイプ検討用）</div>', unsafe_allow_html=True)
+st.markdown("VFからダウンロードしたAIエージェント会議録データを加工し、目的に合わせたレポートを生成します")
 
 # サイドバー設定
 st.sidebar.header("⚙️ 設定")
