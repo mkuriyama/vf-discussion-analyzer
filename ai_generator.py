@@ -202,13 +202,22 @@ def _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens):
         # responsesエンドポイントはsystem promptとuser promptを統合
         combined_prompt = f"{system_prompt}\n\n{user_prompt}"
         
+        # Responses APIは max_output_tokens を使用
         response = client.responses.create(
             model=model,
             input=combined_prompt,
-            max_completion_tokens=max_tokens
+            max_output_tokens=max_tokens  # Responses API用
         )
         
-        return response.output
+        # Responses APIのレスポンス形式からテキストを抽出
+        output_text = ""
+        for item in response.output:
+            if hasattr(item, "content"):
+                for content in item.content:
+                    if hasattr(content, "text"):
+                        output_text += content.text
+        
+        return output_text if output_text else response.output_text
     
     # 通常のchat/completionsエンドポイント
     api_params = {

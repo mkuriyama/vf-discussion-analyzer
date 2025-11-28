@@ -406,8 +406,8 @@ with tab3:
             # レポートの文字数を計算
             content_length = len(record['content'])
             
-            # 改善されたタイトル: 日時 | モデル | ファイル | 文字数
-            title = f"📄 {record['timestamp']} | {record['model']} | {record['zip_file']} | {content_length:,}字"
+            # 改善されたタイトル: 日時 | 出力タイプ | モデル | ファイル | 文字数
+            title = f"📄 {record['timestamp']} | {record['output_type']} | {record['model']} | {record['zip_file']} | {content_length:,}字"
             
             with st.expander(title, expanded=(idx == 0)):
                 # メタデータ表示
@@ -416,10 +416,10 @@ with tab3:
                     st.write(f"**生成日時**: {record['timestamp']}")
                     st.write(f"**元ファイル**: {record['zip_file']}")
                     st.write(f"**出力タイプ**: {record['output_type']}")
+                    st.write(f"**文字数**: {content_length:,}字")
                 with col2:
                     st.write(f"**AIプロバイダー**: {record['provider']}")
                     st.write(f"**モデル**: {record['model']}")
-                    st.write(f"**文字数**: {content_length:,}字")
                     
                 if record['custom_instruction'] != "-":
                     st.write(f"**カスタム指示**: {record['custom_instruction']}")
