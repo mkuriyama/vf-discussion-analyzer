@@ -105,14 +105,17 @@ for provider_name in ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"]:
             'name': info['name'],
             'provider': provider_name,
             'released': info.get('released', ''),
-            'description': info['description']
+            'description': info['description'],
+            'cost_input': info.get('cost_input', 0),
+            'cost_output': info.get('cost_output', 0)
         })
 
-# プロバイダー別にグループ化して表示
+# プロバイダー別にグループ化して表示（モデル名のみ - シンプル表示）
 model_options = []
 model_id_map = {}
 for model in sorted(all_models, key=lambda x: (x['provider'], x['released']), reverse=True):
-    display_name = f"{model['provider']}: {model['name']} - {model['description']}"
+    # シンプルな表示名: モデル名のみ
+    display_name = f"{model['name']}"
     model_options.append(display_name)
     model_id_map[display_name] = (model['id'], model['provider'])
 
@@ -122,7 +125,7 @@ if model_options:
         "使用するモデル",
         model_options,
         index=0,
-        help="全プロバイダーのモデルから選択できます"
+        help="すべてのプロバイダーのモデルから選択"
     )
     
     # 選択されたモデルのIDとプロバイダーを取得
@@ -136,23 +139,57 @@ if model_options:
     else:  # Google (Gemini)
         api_key = google_api_key
     
-    # モデル情報の表示
+    # モデル情報の表示（コスト情報を含む）
     selected_model_info = model_specs.get_model_info(ai_provider, selected_model)
     
     with st.sidebar.expander("📊 選択中のモデル情報", expanded=False):
         st.write(f"**プロバイダー**: {ai_provider}")
         st.write(f"**モデル名**: {selected_model_info['name']}")
+        st.write(f"**説明**: {selected_model_info['description']}")
         st.write(f"**モデルID**: `{selected_model}`")
         st.write(f"**リリース**: {selected_model_info.get('released', 'N/A')}")
         
+        # コスト情報の表示
+        st.markdown("---")
+        st.markdown("**💰 コスト情報（USD per 1M tokens）:**")
+        cost_in = selected_model_info.get('cost_input', 0)
+        cost_out = selected_model_info.get('cost_output', 0)
+        st.write(f"• 入力: ${cost_in:.2f}")
+        st.write(f"• 出力: ${cost_out:.2f}")
+        
+        # Gemini 3 Proの特別価格表示
+        if selected_model == "gemini-3-pro-preview":
+            cost_in_long = selected_model_info.get('cost_input_long', 0)
+            cost_out_long = selected_model_info.get('cost_output_long', 0)
+            st.write(f"• 入力 (>200K): ${cost_in_long:.2f}")
+            st.write(f"• 出力 (>200K): ${cost_out_long:.2f}")
+        
         # トークン制限情報
+        st.markdown("---")
+        st.markdown("**📏 トークン制限:**")
         input_tokens = selected_model_info['input_tokens']
         output_tokens = selected_model_info['output_tokens']
         
-        st.write(f"**入力トークン**: {input_tokens:,} tokens")
+        st.write(f"• 入力: {input_tokens:,} tokens")
         if 'input_tokens_extended' in selected_model_info:
             st.write(f"  *(拡張: {selected_model_info['input_tokens_extended']:,} tokens)*")
-        st.write(f"**出力トークン**: {output_tokens:,} tokens")
+        st.write(f"• 出力: {output_tokens:,} tokens")
+        
+        st.markdown("---")
+        
+        # コスト情報
+        cost_input = selected_model_info.get('cost_input', 0)
+        cost_output = selected_model_info.get('cost_output', 0)
+        
+        if cost_input > 0 or cost_output > 0:
+            st.write("**💰 コスト（per 1M tokens）**:")
+            st.write(f"  • 入力: **${cost_input:.2f}**")
+            st.write(f"  • 出力: **${cost_output:.2f}**")
+            
+            # 長文コストがある場合（Gemini 3 Pro等）
+            if 'cost_input_long' in selected_model_info:
+                st.write(f"  • 入力（>200K）: **${selected_model_info['cost_input_long']:.2f}**")
+                st.write(f"  • 出力（>200K）: **${selected_model_info['cost_output_long']:.2f}**")
         
         if 'note' in selected_model_info:
             st.info(selected_model_info['note'])
@@ -233,13 +270,31 @@ if uploaded_file is not None:
                     md_path = processor.convert_zip_to_markdown(tmp_path)
                     
                     with open(md_path, 'r', encoding='utf-8') as f:
-                        st.session_state.current_md_content = f.read()
+                        md_content = f.read()
+                        st.session_state.current_md_content = md_content
                         st.session_state.current_md_path = md_path
+                    
+                    # 元のZIPファイルとMarkdownファイルのデータ量を計算
+                    zip_size_bytes = len(uploaded_file.getvalue())
+                    md_size_bytes = len(md_content.encode('utf-8'))
+                    md_char_count = len(md_content)
+                    
+                    st.session_state.conversion_stats = {
+                        'zip_size_bytes': zip_size_bytes,
+                        'md_size_bytes': md_size_bytes,
+                        'md_char_count': md_char_count
+                    }
                     
                     # クリーンアップ
                     os.unlink(tmp_path)
                     
                     st.success(f"✅ 変換完了: {uploaded_file.name}")
+                    
+                    # データ量の表示
+                    st.write("**📊 データ量:**")
+                    st.write(f"  • 元ZIP: {zip_size_bytes:,} bytes ({zip_size_bytes/1024:.1f} KB)")
+                    st.write(f"  • Markdown: {md_size_bytes:,} bytes ({md_size_bytes/1024:.1f} KB)")
+                    st.write(f"  • 文字数: {md_char_count:,}字")
                     
                 except Exception as e:
                     st.error(f"❌ 変換エラー: {str(e)}")
@@ -348,7 +403,7 @@ with tab2:
                             instruction = custom_instruction
                         
                         # AI生成（プロバイダー対応）
-                        result = ai_generator.generate_report(
+                        result_data = ai_generator.generate_report(
                             md_content=st.session_state.current_md_content,
                             instruction=instruction,
                             api_key=api_key,
@@ -356,7 +411,45 @@ with tab2:
                             provider=ai_provider
                         )
                         
+                        result = result_data['content']
+                        stats = result_data['stats']
+                        
                         st.success("✅ レポート生成完了")
+                        
+                        # 統計情報の表示
+                        st.write("**📊 生成統計:**")
+                        
+                        # 入力データ量の表示
+                        if 'conversion_stats' in st.session_state:
+                            conv_stats = st.session_state.conversion_stats
+                            st.write("**入力データ:**")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("元ZIP", f"{conv_stats['zip_size_bytes']/1024:.1f} KB")
+                            with col2:
+                                st.metric("Markdown", f"{conv_stats['md_size_bytes']/1024:.1f} KB")
+                            with col3:
+                                st.metric("文字数", f"{conv_stats['md_char_count']:,}字")
+                        
+                        # 出力データ量と処理時間の表示
+                        st.write("**出力データ:**")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            # 処理時間を分と秒で表示
+                            if stats['processing_time'] >= 60:
+                                minutes = int(stats['processing_time'] // 60)
+                                seconds = stats['processing_time'] % 60
+                                st.metric("処理時間", f"{minutes}分{seconds:.0f}秒")
+                            else:
+                                st.metric("処理時間", f"{stats['processing_time']:.1f}秒")
+                        with col2:
+                            st.metric("出力文字数", f"{stats['output_chars']:,}字")
+                        with col3:
+                            st.metric("出力サイズ", f"{stats['output_bytes']/1024:.1f} KB")
+                        
+                        st.write(f"**使用モデル**: {stats['model']}")
+                        if stats['compressed']:
+                            st.info("ℹ️ 入力データが圧縮されました")
                         
                         # 結果表示（整形済みMarkdown・横スクロール防止）
                         st.markdown("---")
@@ -530,6 +623,7 @@ with tab5:
                 'モデルID': f"`{model_id}`",
                 '入力トークン': input_str,
                 '出力トークン': f"{output_tokens:,}",
+                'コスト ($/1M)': f"${info.get('cost_input', 0):.2f} / ${info.get('cost_output', 0):.2f}",
                 '説明': info['description']
             })
         

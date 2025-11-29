@@ -1,6 +1,6 @@
 """
-AI モデル仕様データベース
-最新のモデル情報とコンテキストウィンドウ制限を管理
+AI モデル仕様データベース（コスト情報付き）
+最新のモデル情報、コンテキストウィンドウ制限、価格情報を管理
 """
 
 MODEL_SPECS = {
@@ -9,25 +9,36 @@ MODEL_SPECS = {
         # 【Update】 2025-11-13 リリースの最新系列
         "gpt-5.1-2025-11-13": {
             "name": "GPT-5.1",
-            "input_tokens": 400_000,        # GPT-5 Proと同等だが制御性向上
+            "input_tokens": 400_000,
             "output_tokens": 128_000,
             "description": "最新フラッグシップ。Agenticワークフローに特化。",
-            "released": "2025-11-13"
+            "released": "2025-11-13",
+            "uses_completion_tokens": True,
+            "note": "アクセスには登録が必要",
+            "cost_input": 1.25,  # USD per 1M tokens
+            "cost_output": 10.00
         },
-        # 最上位モデル (DevDay発表版)
         "gpt-5-pro-2025-10-06": {
             "name": "GPT-5 Pro",
             "input_tokens": 400_000,
-            "output_tokens": 272_000,       # Reasoning強化により出力枠が大きい
-            "description": "DevDay 2025発表の重量級モデル。Deep Research等はこれがベース。",
-            "released": "2025-10-06"
+            "output_tokens": 272_000,
+            "description": "Deep Research等はこれがベース。TPM: 30,000 tokens/minの制限に注意",
+            "released": "2025-10-06",
+            "uses_completion_tokens": True,
+            "note": "TPM: 30,000 tokens/min",
+            "cost_input": 1.25,
+            "cost_output": 10.00
         },
         "gpt-5-2025-08-07": {
             "name": "GPT-5",
             "input_tokens": 400_000,
             "output_tokens": 128_000,
             "description": "汎用GPT-5。基本モデル。",
-            "released": "2025-08-07"
+            "released": "2025-08-07",
+            "uses_completion_tokens": True,
+            "note": "temperatureサポートなし（1固定）",
+            "cost_input": 1.25,
+            "cost_output": 10.00
         },
         # 軽量モデル群
         "gpt-5-mini-2025-08-07": {
@@ -35,14 +46,22 @@ MODEL_SPECS = {
             "input_tokens": 400_000,
             "output_tokens": 128_000,
             "description": "コストパフォーマンス重視。",
-            "released": "2025-08-07"
+            "released": "2025-08-07",
+            "uses_completion_tokens": True,
+            "note": "temperatureサポートなし（1固定）",
+            "cost_input": 0.25,
+            "cost_output": 2.00
         },
         "gpt-5-nano-2025-08-07": {
             "name": "GPT-5 Nano",
             "input_tokens": 400_000,
             "output_tokens": 128_000,
             "description": "オンデバイス連携や超高速処理向け。",
-            "released": "2025-08-07"
+            "released": "2025-08-07",
+            "uses_completion_tokens": True,
+            "note": "temperatureサポートなし（1固定）",
+            "cost_input": 0.05,
+            "cost_output": 0.40
         },
     },
 
@@ -54,21 +73,27 @@ MODEL_SPECS = {
             "input_tokens": 200_000,
             "output_tokens": 64_000,        # コーディング・エージェント特化
             "description": "2025年11月リリースの最上位モデル。エージェント性能最高峰。",
-            "released": "2025-11-24"        # API IDの日付とリリース日はズレることがあるためID優先
+            "released": "2025-11-01",
+            "cost_input": 5.00,
+            "cost_output": 25.00
         },
         "claude-sonnet-4-5-20250929": {
             "name": "Claude Sonnet 4.5",
             "input_tokens": 200_000,
             "output_tokens": 64_000,
-            "description": "バランス型ハイエンド。New Sonnet。",
-            "released": "2025-09-29"
+            "description": "バランス型・コーディング最適",
+            "released": "2025-09-29",
+            "cost_input": 3.00,
+            "cost_output": 15.00
         },
         "claude-haiku-4-5-20251001": {
             "name": "Claude Haiku 4.5",
             "input_tokens": 200_000,
             "output_tokens": 32_000,
             "description": "最速・低コストモデル。",
-            "released": "2025-10-01"
+            "released": "2025-10-01",
+            "cost_input": 1.00,
+            "cost_output": 5.00
         },
     },
 
@@ -79,165 +104,100 @@ MODEL_SPECS = {
             "name": "Gemini 3 Pro Preview",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "次世代Gemini 3。マルチモーダル推論強化。",
-            "released": "2025-11-20"
+            "description": "次世代最上位モデル",
+            "released": "2025-11-20",
+            "cost_input": 2.00,  # ≤200K tokens
+            "cost_output": 12.00,
+            "cost_input_long": 4.00,  # >200K tokens
+            "cost_output_long": 18.00,
+            "note": "200Kトークン超で価格2倍"
         },
         "gemini-2.5-pro": {
             "name": "Gemini 2.5 Pro",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "安定版ハイエンド。長いコンテキストに強い。",
-            "released": "2025-06-17"
+            "description": "安定版ハイエンドモデル",
+            "released": "2025-06-17",
+            "cost_input": 1.25,
+            "cost_output": 10.00
         },
         "gemini-2.5-flash": {
             "name": "Gemini 2.5 Flash",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
             "description": "高速・低レイテンシモデル。",
-            "released": "2025-06"
+            "released": "2025-06",
+            "cost_input": 0.30,
+            "cost_output": 2.50
         },
         "gemini-2.5-flash-lite": {
             "name": "Gemini 2.5 Flash Lite",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
             "description": "最軽量レイテンシモデル。",
-            "released": "2025-06"
+            "released": "2025-06",
+            "cost_input": 0.10,
+            "cost_output": 0.40
         },
     }
 }
 
 
+def get_available_models(provider=None):
+    """利用可能なモデル一覧を取得"""
+    if provider:
+        return MODEL_SPECS.get(provider, {})
+    return MODEL_SPECS
+
+
 def get_model_info(provider, model_id):
-    """
-    モデル情報を取得
-    
-    Returns:
-    --------
-    dict or None : モデル情報の辞書
-    """
-    return MODEL_SPECS.get(provider, {}).get(model_id)
-
-
-def get_available_models(provider):
-    """
-    プロバイダーの利用可能モデル一覧を取得
-    
-    Returns:
-    --------
-    dict : {model_id: model_info}
-    """
-    return MODEL_SPECS.get(provider, {})
+    """特定のモデル情報を取得"""
+    if provider in MODEL_SPECS and model_id in MODEL_SPECS[provider]:
+        return MODEL_SPECS[provider][model_id]
+    return None
 
 
 def estimate_input_tokens(text):
-    """
-    入力テキストのトークン数を概算
-    日本語: 約2文字/トークン
-    英語: 約4文字/トークン
-    
-    Returns:
-    --------
-    int : 推定トークン数
-    """
-    import re
-    
-    # 英数字と日本語を分離
-    english_chars = len(re.findall(r'[a-zA-Z0-9]', text))
-    other_chars = len(text) - english_chars
-    
-    # 概算計算
-    return (english_chars // 4) + (other_chars // 2)
+    """入力テキストのトークン数を概算（1トークン≈4文字）"""
+    return len(text) // 4
 
 
-def check_token_compatibility(provider, model_id, input_text):
-    """
-    入力テキストがモデルのトークン制限に収まるかチェック
-    
-    Returns:
-    --------
-    dict : {
-        'compatible': bool,
-        'estimated_tokens': int,
-        'max_tokens': int,
-        'usage_percentage': float,
-        'compression_needed': bool,
-        'status': str  # 'safe', 'warning', 'critical'
-    }
-    """
+def check_token_compatibility(provider, model_id, estimated_tokens):
+    """トークン数がモデルの制限内かチェック"""
     model_info = get_model_info(provider, model_id)
-    
     if not model_info:
-        return {
-            'compatible': False,
-            'error': 'Model not found'
-        }
+        return False, "モデル情報が見つかりません"
     
-    estimated_tokens = estimate_input_tokens(input_text)
-    
-    # 拡張トークン数を優先的に使用
     max_tokens = model_info.get('input_tokens_extended', model_info['input_tokens'])
     
-    usage_percentage = (estimated_tokens / max_tokens) * 100
+    if estimated_tokens > max_tokens:
+        return False, f"トークン数が制限を超えています（推定: {estimated_tokens:,}、上限: {max_tokens:,}）"
     
-    # ステータス判定
-    if usage_percentage < 50:
-        status = 'safe'
-        compression_needed = False
-    elif usage_percentage < 80:
-        status = 'warning'
-        compression_needed = False
-    else:
-        status = 'critical'
-        compression_needed = True
-    
-    return {
-        'compatible': estimated_tokens < max_tokens,
-        'estimated_tokens': estimated_tokens,
-        'max_tokens': max_tokens,
-        'usage_percentage': usage_percentage,
-        'compression_needed': compression_needed,
-        'status': status,
-        'model_name': model_info['name']
-    }
+    return True, "OK"
 
 
-def get_optimal_models(provider, input_text, min_safe_percentage=50):
-    """
-    入力テキストに最適なモデルを推奨
+def get_optimal_models(estimated_tokens, budget_per_1m_tokens=None):
+    """推定トークン数と予算に基づいて最適なモデルを提案"""
+    suitable_models = []
     
-    Parameters:
-    -----------
-    provider : str
-        AIプロバイダー名
-    input_text : str
-        入力テキスト
-    min_safe_percentage : float
-        安全とみなす最小使用率（%）
+    for provider, models in MODEL_SPECS.items():
+        for model_id, info in models.items():
+            max_tokens = info.get('input_tokens_extended', info['input_tokens'])
+            
+            if estimated_tokens <= max_tokens:
+                cost_input = info.get('cost_input', 0)
+                
+                if budget_per_1m_tokens is None or cost_input <= budget_per_1m_tokens:
+                    suitable_models.append({
+                        'provider': provider,
+                        'model_id': model_id,
+                        'name': info['name'],
+                        'max_tokens': max_tokens,
+                        'cost_input': cost_input,
+                        'cost_output': info.get('cost_output', 0)
+                    })
     
-    Returns:
-    --------
-    list : 推奨モデルのリスト（使用率の昇順）
-    """
-    models = get_available_models(provider)
-    estimated_tokens = estimate_input_tokens(input_text)
+    # コスト順にソート
+    suitable_models.sort(key=lambda x: x['cost_input'])
     
-    recommendations = []
-    
-    for model_id, model_info in models.items():
-        max_tokens = model_info.get('input_tokens_extended', model_info['input_tokens'])
-        usage_percentage = (estimated_tokens / max_tokens) * 100
-        
-        if usage_percentage < 100:  # 使用可能なモデルのみ
-            recommendations.append({
-                'model_id': model_id,
-                'model_name': model_info['name'],
-                'usage_percentage': usage_percentage,
-                'max_tokens': max_tokens,
-                'is_safe': usage_percentage < min_safe_percentage,
-                'description': model_info['description']
-            })
-    
-    # 使用率の昇順でソート
-    recommendations.sort(key=lambda x: x['usage_percentage'])
-    
-    return recommendations
+    return suitable_models
