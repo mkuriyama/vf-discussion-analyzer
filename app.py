@@ -411,6 +411,12 @@ with tab2:
                             provider=ai_provider
                         )
                         
+                        # デバッグ: result_dataの型を確認
+                        if not isinstance(result_data, dict):
+                            st.error(f"⚠️ 予期しない戻り値の型: {type(result_data)}")
+                            st.write(f"値: {result_data}")
+                            raise ValueError(f"generate_reportが辞書を返しませんでした: {type(result_data)}")
+                        
                         result = result_data['content']
                         stats = result_data['stats']
                         

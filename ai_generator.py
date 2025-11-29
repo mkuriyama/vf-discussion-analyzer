@@ -99,12 +99,26 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
     
     Returns:
     --------
-    str : 生成されたレポート
+    dict : {
+        'content': str,  # 生成されたレポート
+        'stats': {
+            'processing_time': float,  # 処理時間（秒）
+            'output_bytes': int,  # 出力バイト数
+            'output_chars': int,  # 出力文字数
+            'model': str,  # 使用モデル
+            'compressed': bool  # 圧縮されたか
+        }
+    }
     """
+    import time
+    start_time = time.time()
     
     # モデル仕様を取得
     try:
         import model_specs
+        import importlib
+        importlib.reload(model_specs)  # 最新の仕様を読み込む
+        
         model_info = model_specs.get_model_info(provider, model)
         
         if model_info:
@@ -116,6 +130,12 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
             if max_tokens is None:
                 max_tokens = min(8000, int(model_output_tokens * 0.5))
         else:
+            # モデル情報が見つからない場合のデバッグ情報
+            print(f"⚠️ モデル情報が見つかりません: provider={provider}, model={model}")
+            print(f"   利用可能なプロバイダー: {list(model_specs.MODEL_SPECS.keys())}")
+            if provider in model_specs.MODEL_SPECS:
+                print(f"   プロバイダー内のモデル: {list(model_specs.MODEL_SPECS[provider].keys())[:5]}")
+            
             # デフォルト値（プロバイダー別）
             if "OpenAI" in provider:
                 max_input_tokens = 100_000
@@ -129,8 +149,9 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
             else:
                 max_input_tokens = 100_000
                 max_tokens = max_tokens or 4096
-    except:
+    except Exception as e:
         # フォールバック
+        print(f"⚠️ モデル仕様の読み込みエラー: {e}")
         max_input_tokens = 100_000
         max_tokens = max_tokens or 4096
     
@@ -177,15 +198,34 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
 {content_to_use}
 """
     
+    # 圧縮されたかどうかを記録
+    was_compressed = (estimated_tokens > safe_limit)
+    
     try:
         if "OpenAI" in provider:
-            return _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens)
+            result = _generate_openai(system_prompt, user_prompt, api_key, model, max_tokens)
         elif "Anthropic" in provider:
-            return _generate_anthropic(system_prompt, user_prompt, api_key, model, max_tokens)
+            result = _generate_anthropic(system_prompt, user_prompt, api_key, model, max_tokens)
         elif "Google" in provider or "Gemini" in provider:
-            return _generate_google(system_prompt, user_prompt, api_key, model, max_tokens)
+            result = _generate_google(system_prompt, user_prompt, api_key, model, max_tokens)
         else:
             raise ValueError(f"未対応のプロバイダー: {provider}")
+        
+        # 処理時間と統計情報を計算
+        processing_time = time.time() - start_time
+        output_bytes = len(result.encode('utf-8'))
+        output_chars = len(result)
+        
+        return {
+            'content': result,
+            'stats': {
+                'processing_time': processing_time,
+                'output_bytes': output_bytes,
+                'output_chars': output_chars,
+                'model': model,
+                'compressed': was_compressed
+            }
+        }
             
     except Exception as e:
         raise Exception(f"{provider} API エラー: {str(e)}")
