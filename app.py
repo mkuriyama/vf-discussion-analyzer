@@ -116,23 +116,51 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
     }
-    /* Tighter line spacing for markdown content */
+    /* Optimized spacing for Markdown rendered content */
     .compact-content p {
-        margin-bottom: 0.2rem !important;
-        margin-top: 0.2rem !important;
-        line-height: 1.5 !important;
-    }
-    .compact-content h1, .compact-content h2, .compact-content h3 {
-        margin-top: 1.2rem !important;
         margin-bottom: 0.5rem !important;
+        margin-top: 0rem !important;
+        line-height: 1.6 !important;
+    }
+    .compact-content h1 {
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.8rem !important;
+        font-size: 1.8rem !important;
+    }
+    .compact-content h2 {
+        margin-top: 1.2rem !important;
+        margin-bottom: 0.6rem !important;
+        font-size: 1.5rem !important;
+    }
+    .compact-content h3 {
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 1.2rem !important;
     }
     .compact-content ul, .compact-content ol {
         margin-bottom: 0.5rem !important;
-        margin-top: 0.5rem !important;
+        margin-top: 0.3rem !important;
+        padding-left: 1.5rem !important;
     }
     .compact-content li {
         margin-bottom: 0.2rem !important;
-        line-height: 1.4 !important;
+        line-height: 1.5 !important;
+    }
+    .compact-content blockquote {
+        margin: 0.5rem 0 !important;
+        padding-left: 1rem !important;
+        border-left: 3px solid #ccc !important;
+    }
+    .compact-content code {
+        background-color: #f4f4f4 !important;
+        padding: 0.1rem 0.3rem !important;
+        border-radius: 3px !important;
+    }
+    .compact-content pre {
+        margin: 0.5rem 0 !important;
+        padding: 0.8rem !important;
+        background-color: #f4f4f4 !important;
+        border-radius: 5px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -651,13 +679,14 @@ with tab2:
                         
                         st.caption(f"為替レート: {exchange_rate:.1f}円/USD | ※思考トークン等は含まれません")
                         
-                        # 結果表示（整形済みMarkdown・横スクロール防止・行間調整）
+                        # 結果表示（Markdownレンダリング）
                         st.markdown("---")
                         st.subheader("📄 生成されたレポート")
-                        st.markdown(
-                            f'<div class="compact-content" style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{result}</div>',
-                            unsafe_allow_html=True
-                        )
+                        
+                        # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
+                        st.markdown('<div class="compact-content">', unsafe_allow_html=True)
+                        st.markdown(result, unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
                         
                         # 履歴に保存
                         output_record = {
@@ -824,11 +853,13 @@ with tab3:
                 
                 st.markdown("---")
                 
-                # レポート内容表示（整形済み・横スクロール防止・行間調整）
-                st.markdown(
-                    f'<div class="compact-content" style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{record["content"]}</div>',
-                    unsafe_allow_html=True
-                )
+                # レポート内容表示（Markdownレンダリング）
+                st.markdown("---")
+                
+                # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
+                st.markdown('<div class="compact-content">', unsafe_allow_html=True)
+                st.markdown(record["content"], unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 # ダウンロードボタン
                 st.download_button(
