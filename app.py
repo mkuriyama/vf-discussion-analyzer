@@ -152,6 +152,18 @@ with st.sidebar.expander("🔑 APIキー設定", expanded=False):
     )
 
 st.sidebar.markdown("---")
+
+# 為替レート設定
+exchange_rate = st.sidebar.number_input(
+    "💱 為替レート (USD/JPY)",
+    min_value=100.0,
+    max_value=200.0,
+    value=150.0,
+    step=0.1,
+    help="コスト計算に使用する為替レート"
+)
+
+st.sidebar.markdown("---")
 st.sidebar.subheader("🤖 モデル選択")
 
 # モデル仕様の読み込み
@@ -160,18 +172,6 @@ import importlib
 
 # モジュールを強制的にリロード（開発時のみ、本番では不要）
 importlib.reload(model_specs)
-
-# 為替レート設定
-st.sidebar.markdown("---")
-st.sidebar.subheader("💱 為替レート設定")
-exchange_rate = st.sidebar.number_input(
-    "USD/JPY レート",
-    min_value=100.0,
-    max_value=200.0,
-    value=150.0,
-    step=0.1,
-    help="コスト計算に使用する為替レート"
-)
 
 # すべてのプロバイダーのモデルを統合
 all_models = []
@@ -432,12 +432,39 @@ with tab2:
             help="デフォルトは2000字版がおすすめです"
         )
         
+        # 選択された出力タイプの指示文を表示
+        with st.expander("💡 選択中の出力タイプの指示文（参考）"):
+            if "400字" in output_type:
+                st.code("""以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。""", language="text")
+            elif "2000字" in output_type:
+                st.code("""以下の議論データを分析し、2000字程度の構造化レポートを作成してください。
+
+レポート構成:
+1. 全体サマリー（200字）
+2. 主要な意見の整理（頻出意見と高評価意見の対比を含む）
+3. 特筆すべき少数意見
+4. 結論と示唆""", language="text")
+            elif "5000字" in output_type:
+                st.code("""以下の議論データを詳細に分析し、5000字程度の包括的レポートを作成してください。
+
+レポート構成:
+1. エグゼクティブサマリー（300字）
+2. 議論の背景と目的
+3. 主要トピックごとの詳細分析
+   - 各トピックについて、賛成意見・反対意見・中立意見を整理
+   - 高評価を得た意見の詳細な分析
+4. 頻出キーワードと傾向分析
+5. 特筆すべき少数意見・独創的な提案
+6. 総合的な結論と今後の検討課題""", language="text")
+            else:
+                st.info("カスタム指示を下記に入力してください。上記の指示文を参考に、自由に改変できます。")
+        
         # カスタム指示入力
         custom_instruction = None
         if "カスタム" in output_type:
             custom_instruction = st.text_area(
                 "出力内容の指示を入力してください:",
-                height=150,
+                height=200,
                 placeholder="例: 主要な意見を3つに絞り、それぞれについて賛成・反対の意見を対比させてください。全体で1500字程度でまとめてください。"
             )
         
@@ -565,7 +592,7 @@ with tab2:
                         if stats['compressed']:
                             st.info("ℹ️ 入力データが圧縮されました")
                         
-                        # 実際のコスト計算
+                        # 使用量に基づくコスト推定
                         actual_input_tokens = estimate_tokens_multilingual(st.session_state.current_md_content)
                         actual_output_tokens = estimate_tokens_multilingual(result)
                         actual_cost = calculate_cost(
@@ -575,7 +602,7 @@ with tab2:
                             exchange_rate
                         )
                         
-                        st.write("**💰 実際のコスト:**")
+                        st.write("**💰 使用量ベースのコスト推定:**")
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric(
@@ -591,12 +618,12 @@ with tab2:
                             )
                         with col3:
                             st.metric(
-                                "合計コスト",
+                                "合計推定",
                                 f"¥{actual_cost['total_cost_jpy']:.2f}",
                                 f"${actual_cost['total_cost_usd']:.4f}"
                             )
                         
-                        st.caption(f"為替レート: {exchange_rate:.1f}円/USD（設定値）")
+                        st.caption(f"為替レート: {exchange_rate:.1f}円/USD | ※思考トークン等は含まれません")
                         
                         # 結果表示（整形済みMarkdown・横スクロール防止）
                         st.markdown("---")
@@ -614,7 +641,16 @@ with tab2:
                             'custom_instruction': custom_instruction if custom_instruction else "-",
                             'provider': ai_provider,
                             'model': selected_model,
-                            'content': result
+                            'model_name': selected_model_info['name'],
+                            'content': result,
+                            'stats': stats,
+                            'cost': {
+                                'input_tokens': actual_input_tokens,
+                                'output_tokens': actual_output_tokens,
+                                'total_jpy': actual_cost['total_cost_jpy'],
+                                'total_usd': actual_cost['total_cost_usd'],
+                                'exchange_rate': exchange_rate
+                            }
                         }
                         st.session_state.output_history.insert(0, output_record)
                         
@@ -642,27 +678,92 @@ with tab3:
     else:
         st.write(f"**保存されているレポート数**: {len(st.session_state.output_history)}")
         
+        # 一括ダウンロード機能
+        if st.button("📦 全レポートを一括ダウンロード (ZIP)", use_container_width=True):
+            import zipfile
+            from io import BytesIO
+            import json
+            
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for idx, record in enumerate(st.session_state.output_history):
+                    # レポート本文
+                    report_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_{record['output_type'].split(' ')[0]}.md"
+                    zip_file.writestr(report_filename, record['content'])
+                    
+                    # メタデータ
+                    metadata = {
+                        'timestamp': record['timestamp'],
+                        'zip_file': record['zip_file'],
+                        'output_type': record['output_type'],
+                        'provider': record['provider'],
+                        'model': record['model'],
+                        'model_name': record.get('model_name', record['model']),
+                        'custom_instruction': record.get('custom_instruction', '-'),
+                        'stats': record.get('stats', {}),
+                        'cost': record.get('cost', {})
+                    }
+                    metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_metadata.json"
+                    zip_file.writestr(metadata_filename, json.dumps(metadata, ensure_ascii=False, indent=2))
+            
+            zip_buffer.seek(0)
+            st.download_button(
+                label="💾 ZIPファイルをダウンロード",
+                data=zip_buffer.getvalue(),
+                file_name=f"all_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
+        
+        st.markdown("---")
+        
         for idx, record in enumerate(st.session_state.output_history):
             # レポートの文字数を計算
             content_length = len(record['content'])
             
-            # 改善されたタイトル: 日時 | 出力タイプ | モデル | ファイル | 文字数
-            title = f"📄 {record['timestamp']} | {record['output_type']} | {record['model']} | {record['zip_file']} | {content_length:,}字"
+            # コスト情報を取得
+            cost_info = record.get('cost', {})
+            cost_display = f"¥{cost_info.get('total_jpy', 0):.2f}" if cost_info else "N/A"
+            
+            # 改善されたタイトル: 日時 | 出力タイプ | モデル名 | コスト | 文字数
+            model_name = record.get('model_name', record['model'])
+            title = f"📄 {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {content_length:,}字"
             
             with st.expander(title, expanded=(idx == 0)):
                 # メタデータ表示
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     st.write(f"**生成日時**: {record['timestamp']}")
                     st.write(f"**元ファイル**: {record['zip_file']}")
                     st.write(f"**出力タイプ**: {record['output_type']}")
-                    st.write(f"**文字数**: {content_length:,}字")
                 with col2:
                     st.write(f"**AIプロバイダー**: {record['provider']}")
-                    st.write(f"**モデル**: {record['model']}")
+                    st.write(f"**モデル**: {model_name}")
+                    st.write(f"**モデルID**: `{record['model']}`")
+                with col3:
+                    st.write(f"**文字数**: {content_length:,}字")
+                    if cost_info:
+                        st.write(f"**コスト推定**: ¥{cost_info.get('total_jpy', 0):.2f}")
+                        st.write(f"  (${cost_info.get('total_usd', 0):.4f})")
                     
-                if record['custom_instruction'] != "-":
+                if record.get('custom_instruction', '-') != "-":
                     st.write(f"**カスタム指示**: {record['custom_instruction']}")
+                
+                # 処理統計とコスト詳細
+                if 'stats' in record or 'cost' in record:
+                    st.markdown("**📊 詳細情報:**")
+                    detail_col1, detail_col2 = st.columns(2)
+                    
+                    with detail_col1:
+                        if 'stats' in record:
+                            stats = record['stats']
+                            st.write(f"• 処理時間: {stats.get('processing_time', 0):.1f}秒")
+                            st.write(f"• 出力サイズ: {stats.get('output_bytes', 0)/1024:.1f} KB")
+                    
+                    with detail_col2:
+                        if cost_info:
+                            st.write(f"• 入力: {cost_info.get('input_tokens', 0):,} tokens")
+                            st.write(f"• 出力: {cost_info.get('output_tokens', 0):,} tokens")
                 
                 st.markdown("---")
                 
