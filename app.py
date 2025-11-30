@@ -114,18 +114,21 @@ st.markdown("""
     }
     /* Tighter line spacing for markdown content */
     .compact-content p {
-        margin-bottom: 0.5rem !important;
-        line-height: 1.4 !important;
+        margin-bottom: 0.2rem !important;
+        margin-top: 0.2rem !important;
+        line-height: 1.5 !important;
     }
     .compact-content h1, .compact-content h2, .compact-content h3 {
-        margin-top: 0.8rem !important;
-        margin-bottom: 0.4rem !important;
+        margin-top: 1.2rem !important;
+        margin-bottom: 0.5rem !important;
     }
     .compact-content ul, .compact-content ol {
         margin-bottom: 0.5rem !important;
+        margin-top: 0.5rem !important;
     }
     .compact-content li {
         margin-bottom: 0.2rem !important;
+        line-height: 1.4 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -392,7 +395,7 @@ if uploaded_file is not None:
                     st.session_state.current_md_path = None
 
 # メインエリア
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📄 Markdown閲覧", "📝 レポート生成", "📚 出力結果一覧", "ℹ️ 使い方", "🔧 詳細設定"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📄 Markdown閲覧", "📝 レポート生成", "📚 出力結果一覧", "📖 参考情報", "🔧 詳細設定"])
 
 with tab1:
     st.subheader("📄 変換されたMarkdownファイル")
@@ -706,20 +709,42 @@ with tab3:
                     report_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_{record['output_type'].split(' ')[0]}.md"
                     zip_file.writestr(report_filename, record['content'])
                     
-                    # メタデータ
-                    metadata = {
-                        'timestamp': record['timestamp'],
-                        'zip_file': record['zip_file'],
-                        'output_type': record['output_type'],
-                        'provider': record['provider'],
-                        'model': record['model'],
-                        'model_name': record.get('model_name', record['model']),
-                        'custom_instruction': record.get('custom_instruction', '-'),
-                        'stats': record.get('stats', {}),
-                        'cost': record.get('cost', {})
-                    }
-                    metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_metadata.json"
-                    zip_file.writestr(metadata_filename, json.dumps(metadata, ensure_ascii=False, indent=2))
+                    # メタデータ（Markdown形式）
+                    stats = record.get('stats', {})
+                    cost = record.get('cost', {})
+                    
+                    metadata_md = f"""# レポートメタデータ
+
+## 基本情報
+- **生成日時**: {record['timestamp']}
+- **元ファイル**: {record['zip_file']}
+- **出力タイプ**: {record['output_type']}
+- **カスタム指示**: {record.get('custom_instruction', '-')}
+
+## モデル情報
+- **AIプロバイダー**: {record['provider']}
+- **モデル名**: {record.get('model_name', record['model'])}
+- **モデルID**: `{record['model']}`
+
+## 処理統計
+- **処理時間**: {stats.get('processing_time', 0):.1f}秒
+- **出力サイズ**: {stats.get('output_bytes', 0):,} bytes ({stats.get('output_bytes', 0)/1024:.1f} KB)
+- **出力文字数**: {stats.get('output_chars', 0):,}字
+- **データ圧縮**: {'あり' if stats.get('compressed', False) else 'なし'}
+
+## コスト情報
+- **入力トークン**: {cost.get('input_tokens', 0):,} tokens
+- **出力トークン**: {cost.get('output_tokens', 0):,} tokens
+- **入力コスト**: ¥{cost.get('total_jpy', 0) * cost.get('input_tokens', 0) / (cost.get('input_tokens', 0) + cost.get('output_tokens', 1)):.2f} if cost.get('input_tokens', 0) + cost.get('output_tokens', 0) > 0 else 0}
+- **出力コスト**: ¥{cost.get('total_jpy', 0) * cost.get('output_tokens', 0) / (cost.get('input_tokens', 1) + cost.get('output_tokens', 0)):.2f} if cost.get('input_tokens', 0) + cost.get('output_tokens', 0) > 0 else 0}
+- **合計コスト**: ¥{cost.get('total_jpy', 0):.2f} (${cost.get('total_usd', 0):.4f})
+- **為替レート**: {cost.get('exchange_rate', 150):.1f}円/USD
+
+---
+*生成: VFデータ変換・結果出力ツール*
+"""
+                    metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_info.md"
+                    zip_file.writestr(metadata_filename, metadata_md)
             
             zip_buffer.seek(0)
             st.download_button(
@@ -1014,15 +1039,17 @@ with tab5:
     **注意**: この機能は上級者向けです。設定を誤るとアプリが動作しなくなる可能性があります。
     - 変更はセッション中のみ有効（リロードでリセット）
     - Pythonの辞書形式を理解している必要があります
-    - バックアップを取ってから編集してください
+    - 万一、設定エラーでアプリが動作しなくなった場合は、ページをリロードしてください
+    - ただし、リロードすると出力履歴も消えますので、重要なレポートは事前にダウンロードしておいてください
     """)
     
     if st.checkbox("モデル設定を編集する（上級者向け）"):
         st.markdown("**現在のモデル設定 (model_data.py より)**:")
         
         # model_data.pyの内容を読み込む
+        model_data_path = Path(__file__).parent / 'model_data.py'
         try:
-            with open('/home/claude/discussion_analyzer/model_data.py', 'r', encoding='utf-8') as f:
+            with open(model_data_path, 'r', encoding='utf-8') as f:
                 model_data_content = f.read()
             
             # テキストエリアで編集可能
@@ -1050,7 +1077,7 @@ with tab5:
                     st.rerun()
         
         except FileNotFoundError:
-            st.error("model_data.pyが見つかりません")
+            st.error(f"model_data.pyが見つかりません: {model_data_path}")
     
     # 既存の内容
     st.markdown("---")
