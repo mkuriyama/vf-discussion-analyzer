@@ -14,7 +14,6 @@ MODEL_SPECS = {
             "description": "最新フラッグシップ。Agenticワークフローに特化。",
             "released": "2025-11-13",
             "uses_completion_tokens": True,
-            "note": "アクセスには登録が必要",
             "cost_input": 1.25,  # USD per 1M tokens
             "cost_output": 10.00
         },

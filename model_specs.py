@@ -21,8 +21,23 @@ def get_model_info(provider, model_id):
 
 
 def estimate_input_tokens(text):
-    """入力テキストのトークン数を概算（1トークン≈4文字）"""
-    return len(text) // 4
+    """
+    入力テキストのトークン数を概算
+    多言語対応の推定式:
+    - 日本語: 1.5文字 ≈ 1トークン
+    - その他: 4文字 ≈ 1トークン
+    """
+    # 日本語文字（ひらがな、カタカナ、漢字）をカウント
+    japanese_chars = sum(1 for c in text if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff')
+    # それ以外の文字
+    other_chars = len(text) - japanese_chars
+    
+    # 推定トークン数
+    # 日本語: 1.5文字 ≈ 1トークン
+    # 英語など: 4文字 ≈ 1トークン
+    estimated_tokens = int(japanese_chars / 1.5 + other_chars / 4)
+    
+    return estimated_tokens
 
 
 def check_token_compatibility(provider, model_id, text_content):

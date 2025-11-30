@@ -840,133 +840,35 @@ with tab3:
                 )
 
 with tab4:
-    st.markdown("""
-    ## 📖 使い方
+    st.markdown("## 📖 参考情報")
     
-    ### 1. ファイルのアップロード
-    サイドバーから議論データが含まれるZIPファイルをアップロードしてください。
-    自動的にMarkdownに変換されます。
-    
-    ### 2. Markdownの確認
-    「📄 Markdown閲覧」タブで変換されたMarkdownファイルを確認できます。
-    
-    ### 3. AIプロバイダーとモデルの選択
-    サイドバーで使用するAIプロバイダー（OpenAI/Anthropic/Google）とモデルを選択します。
-    対応するAPIキーを設定してください。
-    
-    ### 4. レポートの生成
-    「📝 レポート生成」タブでレポートタイプを選択し、生成ボタンをクリックします。
-    
-    - **400字版**: 経営層向けの簡潔なサマリー
-    - **2000字版**: バランスの取れた構造化レポート（推奨）
-    - **5000字版**: 詳細な分析レポート
-    - **カスタム**: 自由に指示を記述
-    
-    ### 5. 結果の確認と保存
-    - 生成されたレポートはその場で確認できます
-    - 「📚 出力結果一覧」タブで過去のレポートも閲覧可能
-    - 各レポートは個別にダウンロードできます
-    
-    ## 💡 Tips
-    
-    ### トークン制限エラーが出た場合
-    - より小さいモデルを選択（例: gpt-4o-mini）
-    - 短いレポートタイプを選択（400字版）
-    - カスタム指示で具体的な焦点を絞る
-    
-    ### 各AIプロバイダーの特徴
-    - **OpenAI**: 最新のGPTモデル、高速で高品質
-    - **Anthropic (Claude)**: 長文理解に優れる、詳細な分析
-    - **Google (Gemini)**: コスト効率が良い、マルチモーダル対応
-    
-    ### コスト最適化
-    - 小さいモデル（mini/nano）を優先的に使用
-    - 必要な情報のみを含むカスタム指示を活用
-    - 同じデータで複数試す場合は出力結果一覧を活用
-    """)
-
-
-with tab5:
-    st.markdown("## 🔧 詳細設定・前提情報")
+    # 使い方セクション
+    st.markdown("### 📚 基本的な使い方")
+    st.markdown(ref.USAGE_GUIDE)
     
     # トークン推定ロジック
     st.markdown("---")
     st.markdown("### 💡 トークン数推定のロジック")
-    
-    st.markdown("""
-    **多言語対応の推定式**:
-    - 日本語文字（ひらがな、カタカナ、漢字）: **1.5文字 ≈ 1トークン**
-    - その他の文字（英語、数字、記号等）: **4文字 ≈ 1トークン**
-    
-    **計算例**:
-    """)
+    st.markdown(ref.TOKEN_ESTIMATION_INTRO)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.code("""
-例1: 日本語のみ
-「今日は良い天気です」（10文字）
-→ 10 ÷ 1.5 ≈ 7 tokens
-
-例2: 英語のみ
-"Hello world" (11文字)
-→ 11 ÷ 4 ≈ 3 tokens
-        """, language="text")
-    
+        st.code(ref.TOKEN_ESTIMATION_EXAMPLE_1, language="text")
     with col2:
-        st.code("""
-例3: 混合テキスト
-"Today は晴れ" (9文字)
-英語: "Today " = 6文字 → 1.5 tokens
-日本語: "は晴れ" = 3文字 → 2 tokens
-合計: ≈ 3.5 tokens
-        """, language="text")
+        st.code(ref.TOKEN_ESTIMATION_EXAMPLE_2, language="text")
     
-    st.info("""
-    **注意事項**:
-    - これはあくまで概算値です
-    - 実際のトークン化は各AIモデルで異なります
-    - 誤差は±15-25%程度を想定してください
-    - 特殊文字や絵文字は予測が困難な場合があります
-    """)
+    st.info(ref.TOKEN_ESTIMATION_NOTE)
     
     # コスト計算のロジック
     st.markdown("---")
     st.markdown("### 💰 コスト計算のロジック")
-    
     st.markdown("**基本計算式**:")
-    st.code("""
-入力コスト = (入力トークン数 ÷ 1,000,000) × 入力単価($/1M) × 為替レート(円/USD)
-出力コスト = (出力トークン数 ÷ 1,000,000) × 出力単価($/1M) × 為替レート(円/USD)
-合計コスト = 入力コスト + 出力コスト
-    """, language="text")
+    st.code(ref.COST_CALCULATION_FORMULA, language="text")
     
     st.markdown("**計算例** (Gemini 2.5 Flash-Lite、為替150円/USD):")
-    st.code("""
-モデル単価: 入力 $0.10/1M、出力 $0.40/1M
-入力: 30,000 tokens、出力: 3,000 tokens
-
-入力コスト = (30,000 ÷ 1,000,000) × $0.10 × 150 = ¥0.45
-出力コスト = (3,000 ÷ 1,000,000) × $0.40 × 150 = ¥0.18
-合計コスト = ¥0.63
-    """, language="text")
+    st.code(ref.COST_CALCULATION_EXAMPLE, language="text")
     
-    st.warning("""
-    **含まれないコスト要素**:
-    - ❌ 思考トークン（o1モデル等で使用される内部推論トークン）
-    - ❌ システムプロンプトのトークン
-    - ❌ Few-shot例のトークン
-    - ❌ APIリクエストの基本料金（通常は無料）
-    
-    **含まれるコスト要素**:
-    - ✅ ユーザー入力（変換されたMarkdownテキスト）
-    - ✅ モデル出力（生成されたレポート）
-    
-    **精度について**:
-    - 推定誤差: ±10-20%程度
-    - o1モデル等の思考トークンを使用するモデルでは、実際のコストはこの推定値より高くなります
-    - あくまで目安としてご利用ください
-    """)
+    st.warning(ref.COST_CALCULATION_WARNING)
     
     # 各出力タイプの指示文
     st.markdown("---")
@@ -976,127 +878,58 @@ with tab5:
     
     with tab_400:
         st.markdown("**400字版 - エグゼクティブサマリー**")
-        st.code("""
-以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。
-        """, language="text")
+        st.code(ref.OUTPUT_INSTRUCTIONS["400字版"], language="text")
     
     with tab_2000:
         st.markdown("**2000字版 - 構造化レポート（推奨）**")
-        st.code("""
-以下の議論データを分析し、2000字程度の構造化レポートを作成してください。
-
-レポート構成:
-1. 全体サマリー（200字）
-2. 主要な意見の整理（頻出意見と高評価意見の対比を含む）
-3. 特筆すべき少数意見
-4. 結論と示唆
-        """, language="text")
+        st.code(ref.OUTPUT_INSTRUCTIONS["2000字版"], language="text")
     
     with tab_5000:
         st.markdown("**5000字版 - 詳細分析レポート**")
-        st.code("""
-以下の議論データを詳細に分析し、5000字程度の包括的レポートを作成してください。
-
-レポート構成:
-1. エグゼクティブサマリー（300字）
-2. 議論の背景と目的
-3. 主要トピックごとの詳細分析
-   - 各トピックについて、賛成意見・反対意見・中立意見を整理
-   - 高評価を得た意見の詳細な分析
-4. 頻出キーワードと傾向分析
-5. 特筆すべき少数意見・独創的な提案
-6. 総合的な結論と今後の検討課題
-        """, language="text")
+        st.code(ref.OUTPUT_INSTRUCTIONS["5000字版"], language="text")
     
-    st.info("**カスタム指示**: 上記の指示文を参考に、自由に改変してお使いいただけます。")
+    st.info(ref.OUTPUT_INSTRUCTIONS_NOTE)
     
     # 暗黙の前提条件
     st.markdown("---")
     st.markdown("### ⚠️ 暗黙の前提と制限事項")
+    st.markdown(ref.ASSUMPTIONS_AND_LIMITATIONS)
     
-    st.markdown("""
-    **データ形式**:
-    - VFからダウンロードしたZIPファイルを想定
-    - ZIP内にCSV形式の議論データが含まれることを前提
-    - 文字コード: UTF-8を推奨（Shift-JISも自動検出）
+    # Tips
+    st.markdown("---")
+    st.markdown("### 💡 Tips")
+    st.markdown(ref.TIPS_CONTENT)
+
+
+with tab5:
+    st.markdown("## 🔧 詳細設定")
     
-    **トークン制限**:
-    - 各モデルには入力トークン数の上限があります
-    - 使用率が60%未満: 安全
-    - 使用率が60-80%: 注意
-    - 使用率が80%以上: 自動圧縮を実施
-    - 圧縮により一部情報が省略される可能性があります
-    
-    **APIキー**:
-    - 各プロバイダーのAPIキーが必要
-    - キーの有効性チェックは行いません（エラー時に初めて判明）
-    - セッション中のみ保持（ブラウザリロードで消去）
-    
-    **為替レート**:
-    - 手動設定（自動更新機能なし）
-    - デフォルト: 150円/USD
-    - 実際の為替レートを確認して設定してください
-    
-    **生成されたレポート**:
-    - セッション中のみ保持
-    - ブラウザをリロードすると履歴が消去されます
-    - 重要なレポートは必ずダウンロードしてください
-    
-    **コスト推定の精度**:
-    - トークン数: ±15-25%の誤差
-    - コスト: ±10-20%の誤差
-    - o1モデル等では思考トークンにより実コストが高くなります
-    """)
-    
-    # モデル設定編集（上級者向け）
+    # モデル設定編集（上級者向け - 現在無効）
     st.markdown("---")
     st.markdown("### 🔧 モデル設定編集（上級者向け）")
     
-    st.warning("""
-    **注意**: この機能は上級者向けです。設定を誤るとアプリが動作しなくなる可能性があります。
-    - 変更はセッション中のみ有効（リロードでリセット）
-    - Pythonの辞書形式を理解している必要があります
-    - 万一、設定エラーでアプリが動作しなくなった場合は、ページをリロードしてください
-    - ただし、リロードすると出力履歴も消えますので、重要なレポートは事前にダウンロードしておいてください
-    """)
+    st.warning(settings.MODEL_EDITING_WARNING)
     
-    if st.checkbox("モデル設定を編集する（上級者向け）"):
-        st.markdown("**現在のモデル設定 (model_data.py より)**:")
+    if st.checkbox("モデル設定を編集する（上級者向け）", disabled=True):
+        st.info("この機能は現在開発中です。次のバージョンで有効化予定です。")
         
-        # model_data.pyの内容を読み込む
+        # モデルデータ表示（読み取り専用として）
         model_data_path = Path(__file__).parent / 'model_data.py'
         try:
             with open(model_data_path, 'r', encoding='utf-8') as f:
                 model_data_content = f.read()
             
-            # テキストエリアで編集可能
-            edited_content = st.text_area(
-                "モデル設定を編集:",
+            st.text_area(
+                "現在のモデル設定（読み取り専用）:",
                 value=model_data_content,
-                height=400,
-                help="Pythonの辞書形式で記述してください"
+                height=300,
+                disabled=True,
+                help="この機能は開発中のため、現在は閲覧のみ可能です"
             )
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ 設定を反映（セッション中のみ）", type="primary"):
-                    try:
-                        # 設定を一時的に反映
-                        exec(edited_content, globals())
-                        st.success("✅ 設定を反映しました（セッション中のみ有効）")
-                        st.info("ページをリロードすると元の設定に戻ります")
-                    except Exception as e:
-                        st.error(f"❌ エラー: {str(e)}")
-                        st.warning("設定の書式を確認してください")
-            
-            with col2:
-                if st.button("🔄 リセット"):
-                    st.rerun()
-        
         except FileNotFoundError:
             st.error(f"model_data.pyが見つかりません: {model_data_path}")
     
-    # 既存の内容
+    # 対応モデル一覧
     st.markdown("---")
     st.markdown("### 📋 対応モデル一覧")
     
@@ -1134,40 +967,15 @@ with tab5:
         
         st.markdown("")
     
+    # APIキーの取得、Tips、Secrets設定
     st.markdown("---")
-    st.markdown("""
-    ### APIキーの取得
+    st.markdown(settings.API_KEY_GUIDE)
     
-    #### OpenAI
-    1. https://platform.openai.com/ にアクセス
-    2. API Keysセクションで新規作成
+    st.markdown("---")
+    st.markdown(settings.SETTINGS_TIPS)
     
-    #### Anthropic
-    1. https://console.anthropic.com/ にアクセス
-    2. API Keysで新規作成
-    
-    #### Google
-    1. https://aistudio.google.com/app/apikey にアクセス
-    2. Create API keyをクリック
-    
-    ### 💡 Tips
-    
-    - **トークン制限**: 各モデルの入力トークン数は上記の表を参照
-    - **大きなファイル**: トークン制限の80%を超えると自動圧縮
-    - **GPT-5 Pro**: TPM制限があるため、大きなファイルは自動的に20,000トークンに制限されます
-    - **コスト最適化**: mini/flash/haiku モデルは経済的
-    
-    ### Streamlit Secrets設定
-    
-    本番環境では、Streamlit Cloud の Secrets 機能を使用してAPIキーを安全に管理できます。
-    
-    ```toml
-    # .streamlit/secrets.toml
-    OPENAI_API_KEY = "your-openai-key"
-    ANTHROPIC_API_KEY = "your-anthropic-key"
-    GOOGLE_API_KEY = "your-google-key"
-    ```
-    """)
+    st.markdown("---")
+    st.markdown(settings.STREAMLIT_SECRETS_GUIDE)
 
 
 # フッター
