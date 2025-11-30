@@ -184,26 +184,50 @@ if 'uploaded_file_name' not in st.session_state:
 
 # APIキー設定（折りたたみ可能）
 with st.sidebar.expander("🔑 APIキー設定", expanded=False):
-    openai_api_key = st.text_input(
-        "OpenAI APIキー",
+    st.info("""
+    **APIキーの使用方法**:
+    - 空欄の場合: システムに設定されたAPIキーを使用（設定されている場合）
+    - 入力した場合: 入力したAPIキーを優先使用
+    
+    ⚠️ 自分のAPIキーを入力する場合は、使用後にブラウザを閉じることを推奨します。
+    """)
+    
+    # ユーザー入力のAPIキー（デフォルトは空）
+    user_openai_key = st.text_input(
+        "OpenAI APIキー（任意）",
         type="password",
-        help="OpenAI APIキーを入力してください",
-        value=os.getenv("OPENAI_API_KEY", "")
+        help="自分のAPIキーを使用する場合のみ入力してください",
+        placeholder="空欄の場合はシステム設定を使用"
     )
     
-    anthropic_api_key = st.text_input(
-        "Anthropic APIキー",
+    user_anthropic_key = st.text_input(
+        "Anthropic APIキー（任意）",
         type="password",
-        help="Anthropic APIキーを入力してください",
-        value=os.getenv("ANTHROPIC_API_KEY", "")
+        help="自分のAPIキーを使用する場合のみ入力してください",
+        placeholder="空欄の場合はシステム設定を使用"
     )
     
-    google_api_key = st.text_input(
-        "Google APIキー",
+    user_google_key = st.text_input(
+        "Google APIキー（任意）",
         type="password",
-        help="Google API キーを入力してください",
-        value=os.getenv("GOOGLE_API_KEY", "")
+        help="自分のAPIキーを使用する場合のみ入力してください",
+        placeholder="空欄の場合はシステム設定を使用"
     )
+    
+    # 実際に使用するAPIキーを決定（ユーザー入力 or システム設定）
+    openai_api_key = user_openai_key if user_openai_key else os.getenv("OPENAI_API_KEY", "")
+    anthropic_api_key = user_anthropic_key if user_anthropic_key else os.getenv("ANTHROPIC_API_KEY", "")
+    google_api_key = user_google_key if user_google_key else os.getenv("GOOGLE_API_KEY", "")
+    
+    # 使用中のキーの状態を表示（キー自体は表示しない）
+    st.markdown("**現在の設定状態:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("OpenAI:", "🔑 ユーザー入力" if user_openai_key else ("✅ システム設定" if openai_api_key else "❌ 未設定"))
+    with col2:
+        st.write("Anthropic:", "🔑 ユーザー入力" if user_anthropic_key else ("✅ システム設定" if anthropic_api_key else "❌ 未設定"))
+    st.write("Google:", "🔑 ユーザー入力" if user_google_key else ("✅ システム設定" if google_api_key else "❌ 未設定"))
+
 
 st.sidebar.markdown("---")
 
@@ -935,33 +959,7 @@ with tab4:
 with tab5:
     st.markdown("## 🔧 詳細設定")
     
-    # モデル設定編集（上級者向け - 現在無効）
-    st.markdown("---")
-    st.markdown("### 🔧 モデル設定編集（上級者向け）")
-    
-    st.warning(settings.MODEL_EDITING_WARNING)
-    
-    if st.checkbox("モデル設定を編集する（上級者向け）", disabled=True):
-        st.info("この機能は現在開発中です。次のバージョンで有効化予定です。")
-        
-        # モデルデータ表示（読み取り専用として）
-        model_data_path = Path(__file__).parent / 'model_data.py'
-        try:
-            with open(model_data_path, 'r', encoding='utf-8') as f:
-                model_data_content = f.read()
-            
-            st.text_area(
-                "現在のモデル設定（読み取り専用）:",
-                value=model_data_content,
-                height=300,
-                disabled=True,
-                help="この機能は開発中のため、現在は閲覧のみ可能です"
-            )
-        except FileNotFoundError:
-            st.error(f"model_data.pyが見つかりません: {model_data_path}")
-    
     # 対応モデル一覧
-    st.markdown("---")
     st.markdown("### 📋 対応モデル一覧")
     
     # 動的にモデル情報を表示
@@ -1007,6 +1005,30 @@ with tab5:
     
     st.markdown("---")
     st.markdown(settings.STREAMLIT_SECRETS_GUIDE)
+    
+    # モデル設定編集（上級者向け - 現在無効） - 一番下に移動
+    st.markdown("---")
+    st.markdown("### 🔧 モデル設定編集（上級者向け）")
+    
+    if st.checkbox("モデル設定を編集する（上級者向け）", disabled=True):
+        st.warning(settings.MODEL_EDITING_WARNING)
+        st.info("この機能は現在開発中です。次のバージョンで有効化予定です。")
+        
+        # モデルデータ表示（読み取り専用として）
+        model_data_path = Path(__file__).parent / 'model_data.py'
+        try:
+            with open(model_data_path, 'r', encoding='utf-8') as f:
+                model_data_content = f.read()
+            
+            st.text_area(
+                "現在のモデル設定（読み取り専用）:",
+                value=model_data_content,
+                height=300,
+                disabled=True,
+                help="この機能は開発中のため、現在は閲覧のみ可能です"
+            )
+        except FileNotFoundError:
+            st.error(f"model_data.pyが見つかりません: {model_data_path}")
 
 
 # フッター
