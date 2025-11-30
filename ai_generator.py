@@ -116,9 +116,6 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
     # モデル仕様を取得
     try:
         import model_specs
-        import importlib
-        importlib.reload(model_specs)  # 最新の仕様を読み込む
-        
         model_info = model_specs.get_model_info(provider, model)
         
         if model_info:
@@ -130,12 +127,6 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
             if max_tokens is None:
                 max_tokens = min(8000, int(model_output_tokens * 0.5))
         else:
-            # モデル情報が見つからない場合のデバッグ情報
-            print(f"⚠️ モデル情報が見つかりません: provider={provider}, model={model}")
-            print(f"   利用可能なプロバイダー: {list(model_specs.MODEL_SPECS.keys())}")
-            if provider in model_specs.MODEL_SPECS:
-                print(f"   プロバイダー内のモデル: {list(model_specs.MODEL_SPECS[provider].keys())[:5]}")
-            
             # デフォルト値（プロバイダー別）
             if "OpenAI" in provider:
                 max_input_tokens = 100_000
@@ -151,7 +142,6 @@ def generate_report(md_content, instruction, api_key, model, provider="OpenAI", 
                 max_tokens = max_tokens or 4096
     except Exception as e:
         # フォールバック
-        print(f"⚠️ モデル仕様の読み込みエラー: {e}")
         max_input_tokens = 100_000
         max_tokens = max_tokens or 4096
     

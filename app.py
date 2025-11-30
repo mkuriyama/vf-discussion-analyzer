@@ -11,6 +11,74 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+
+def estimate_tokens_multilingual(text):
+    """
+    多言語対応のトークン推定
+    日本語: 1文字 ≈ 1.5トークン
+    英語: 1単語 ≈ 1.3トークン (1文字 ≈ 0.26トークン)
+    """
+    # 日本語文字（ひらがな、カタカナ、漢字）をカウント
+    japanese_chars = sum(1 for c in text if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff')
+    # それ以外の文字
+    other_chars = len(text) - japanese_chars
+    
+    # 推定トークン数
+    # 日本語: 1.5トークン/文字
+    # 英語など: 0.26トークン/文字
+    estimated_tokens = int(japanese_chars * 1.5 + other_chars * 0.26)
+    
+    return estimated_tokens
+
+
+def calculate_cost(input_tokens, output_tokens, model_info, exchange_rate=150.0):
+    """
+    コストを計算（USD → JPY）
+    
+    Parameters:
+    -----------
+    input_tokens : int
+        入力トークン数
+    output_tokens : int
+        出力トークン数  
+    model_info : dict
+        モデル情報（cost_input, cost_outputを含む）
+    exchange_rate : float
+        USD/JPY為替レート
+    
+    Returns:
+    --------
+    dict : {
+        'input_cost_usd': float,
+        'output_cost_usd': float,
+        'total_cost_usd': float,
+        'input_cost_jpy': float,
+        'output_cost_jpy': float,
+        'total_cost_jpy': float
+    }
+    """
+    cost_input_per_1m = model_info.get('cost_input', 0)
+    cost_output_per_1m = model_info.get('cost_output', 0)
+    
+    # USD計算
+    input_cost_usd = (input_tokens / 1_000_000) * cost_input_per_1m
+    output_cost_usd = (output_tokens / 1_000_000) * cost_output_per_1m
+    total_cost_usd = input_cost_usd + output_cost_usd
+    
+    # JPY計算
+    input_cost_jpy = input_cost_usd * exchange_rate
+    output_cost_jpy = output_cost_usd * exchange_rate
+    total_cost_jpy = total_cost_usd * exchange_rate
+    
+    return {
+        'input_cost_usd': input_cost_usd,
+        'output_cost_usd': output_cost_usd,
+        'total_cost_usd': total_cost_usd,
+        'input_cost_jpy': input_cost_jpy,
+        'output_cost_jpy': output_cost_jpy,
+        'total_cost_jpy': total_cost_jpy
+    }
+
 # ページ設定
 st.set_page_config(
     page_title="VFデータ変換・結果出力ツール",
@@ -60,30 +128,28 @@ if 'current_md_path' not in st.session_state:
 if 'uploaded_file_name' not in st.session_state:
     st.session_state.uploaded_file_name = None
 
-# OpenAI API設定
-st.sidebar.subheader("🔑 APIキー設定")
-
-# すべてのAPIキーを一度に表示
-openai_api_key = st.sidebar.text_input(
-    "OpenAI APIキー",
-    type="password",
-    help="OpenAI APIキーを入力してください",
-    value=os.getenv("OPENAI_API_KEY", "")
-)
-
-anthropic_api_key = st.sidebar.text_input(
-    "Anthropic APIキー",
-    type="password",
-    help="Anthropic APIキーを入力してください",
-    value=os.getenv("ANTHROPIC_API_KEY", "")
-)
-
-google_api_key = st.sidebar.text_input(
-    "Google APIキー",
-    type="password",
-    help="Google API キーを入力してください",
-    value=os.getenv("GOOGLE_API_KEY", "")
-)
+# APIキー設定（折りたたみ可能）
+with st.sidebar.expander("🔑 APIキー設定", expanded=False):
+    openai_api_key = st.text_input(
+        "OpenAI APIキー",
+        type="password",
+        help="OpenAI APIキーを入力してください",
+        value=os.getenv("OPENAI_API_KEY", "")
+    )
+    
+    anthropic_api_key = st.text_input(
+        "Anthropic APIキー",
+        type="password",
+        help="Anthropic APIキーを入力してください",
+        value=os.getenv("ANTHROPIC_API_KEY", "")
+    )
+    
+    google_api_key = st.text_input(
+        "Google APIキー",
+        type="password",
+        help="Google API キーを入力してください",
+        value=os.getenv("GOOGLE_API_KEY", "")
+    )
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🤖 モデル選択")
@@ -94,6 +160,18 @@ import importlib
 
 # モジュールを強制的にリロード（開発時のみ、本番では不要）
 importlib.reload(model_specs)
+
+# 為替レート設定
+st.sidebar.markdown("---")
+st.sidebar.subheader("💱 為替レート設定")
+exchange_rate = st.sidebar.number_input(
+    "USD/JPY レート",
+    min_value=100.0,
+    max_value=200.0,
+    value=150.0,
+    step=0.1,
+    help="コスト計算に使用する為替レート"
+)
 
 # すべてのプロバイダーのモデルを統合
 all_models = []
@@ -109,6 +187,7 @@ for provider_name in ["OpenAI", "Anthropic (Claude)", "Google (Gemini)"]:
             'cost_input': info.get('cost_input', 0),
             'cost_output': info.get('cost_output', 0)
         })
+
 
 # プロバイダー別にグループ化して表示（モデル名のみ - シンプル表示）
 model_options = []
@@ -143,29 +222,21 @@ if model_options:
     selected_model_info = model_specs.get_model_info(ai_provider, selected_model)
     
     with st.sidebar.expander("📊 選択中のモデル情報", expanded=False):
+        # CSSでコンパクト表示
+        st.markdown("""
+        <style>
+        .compact-info p { margin-bottom: 0.3rem !important; }
+        </style>
+        <div class="compact-info">
+        """, unsafe_allow_html=True)
+        
         st.write(f"**プロバイダー**: {ai_provider}")
         st.write(f"**モデル名**: {selected_model_info['name']}")
         st.write(f"**説明**: {selected_model_info['description']}")
         st.write(f"**モデルID**: `{selected_model}`")
         st.write(f"**リリース**: {selected_model_info.get('released', 'N/A')}")
         
-        # コスト情報の表示
-        st.markdown("---")
-        st.markdown("**💰 コスト情報（USD per 1M tokens）:**")
-        cost_in = selected_model_info.get('cost_input', 0)
-        cost_out = selected_model_info.get('cost_output', 0)
-        st.write(f"• 入力: ${cost_in:.2f}")
-        st.write(f"• 出力: ${cost_out:.2f}")
-        
-        # Gemini 3 Proの特別価格表示
-        if selected_model == "gemini-3-pro-preview":
-            cost_in_long = selected_model_info.get('cost_input_long', 0)
-            cost_out_long = selected_model_info.get('cost_output_long', 0)
-            st.write(f"• 入力 (>200K): ${cost_in_long:.2f}")
-            st.write(f"• 出力 (>200K): ${cost_out_long:.2f}")
-        
         # トークン制限情報
-        st.markdown("---")
         st.markdown("**📏 トークン制限:**")
         input_tokens = selected_model_info['input_tokens']
         output_tokens = selected_model_info['output_tokens']
@@ -175,24 +246,24 @@ if model_options:
             st.write(f"  *(拡張: {selected_model_info['input_tokens_extended']:,} tokens)*")
         st.write(f"• 出力: {output_tokens:,} tokens")
         
-        st.markdown("---")
-        
-        # コスト情報
+        # コスト情報（統合版）
         cost_input = selected_model_info.get('cost_input', 0)
         cost_output = selected_model_info.get('cost_output', 0)
         
         if cost_input > 0 or cost_output > 0:
-            st.write("**💰 コスト（per 1M tokens）**:")
-            st.write(f"  • 入力: **${cost_input:.2f}**")
-            st.write(f"  • 出力: **${cost_output:.2f}**")
+            st.markdown("**💰 コスト (USD per 1M tokens):**")
+            st.write(f"• 入力: ${cost_input:.2f}")
+            st.write(f"• 出力: ${cost_output:.2f}")
             
             # 長文コストがある場合（Gemini 3 Pro等）
             if 'cost_input_long' in selected_model_info:
-                st.write(f"  • 入力（>200K）: **${selected_model_info['cost_input_long']:.2f}**")
-                st.write(f"  • 出力（>200K）: **${selected_model_info['cost_output_long']:.2f}**")
+                st.write(f"• 入力 (>200K): ${selected_model_info['cost_input_long']:.2f}")
+                st.write(f"• 出力 (>200K): ${selected_model_info['cost_output_long']:.2f}")
         
         if 'note' in selected_model_info:
             st.info(selected_model_info['note'])
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # ファイルサイズとの比較表示
     if 'current_md_content' in st.session_state and st.session_state.current_md_content:
@@ -312,6 +383,18 @@ with tab1:
     else:
         st.success(f"✅ ファイル: {st.session_state.uploaded_file_name}")
         
+        # データ量情報を表示（永続化）
+        if 'conversion_stats' in st.session_state:
+            conv_stats = st.session_state.conversion_stats
+            st.markdown("**📊 データ量:**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("元ZIP", f"{conv_stats['zip_size_bytes']/1024:.1f} KB")
+            with col2:
+                st.metric("Markdown", f"{conv_stats['md_size_bytes']/1024:.1f} KB")
+            with col3:
+                st.metric("文字数", f"{conv_stats['md_char_count']:,}字")
+        
         # Markdownの表示（整形済み）
         st.markdown("---")
         st.markdown(st.session_state.current_md_content)
@@ -359,6 +442,37 @@ with tab2:
             )
         
         st.markdown("---")
+        
+        # コスト推定を表示
+        if st.session_state.current_md_content:
+            input_tokens_est = estimate_tokens_multilingual(st.session_state.current_md_content)
+            
+            # 出力トークン推定（出力タイプに基づく）
+            if "400字" in output_type:
+                output_tokens_est = int(400 * 1.5)  # 日本語想定
+            elif "2000字" in output_type:
+                output_tokens_est = int(2000 * 1.5)
+            elif "5000字" in output_type:
+                output_tokens_est = int(5000 * 1.5)
+            else:
+                output_tokens_est = int(2000 * 1.5)  # デフォルト
+            
+            # コスト計算
+            cost_estimate = calculate_cost(
+                input_tokens_est,
+                output_tokens_est,
+                selected_model_info,
+                exchange_rate
+            )
+            
+            st.info(f"""
+            💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)  
+            • 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
+            • 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
+            • **合計: ¥{cost_estimate['total_cost_jpy']:.2f}** (${cost_estimate['total_cost_usd']:.4f})
+            
+            ※実際のコストは出力内容により変動します
+            """)
         
         # 生成ボタン
         if st.button("🚀 レポート生成", type="primary", use_container_width=True):
@@ -411,12 +525,6 @@ with tab2:
                             provider=ai_provider
                         )
                         
-                        # デバッグ: result_dataの型を確認
-                        if not isinstance(result_data, dict):
-                            st.error(f"⚠️ 予期しない戻り値の型: {type(result_data)}")
-                            st.write(f"値: {result_data}")
-                            raise ValueError(f"generate_reportが辞書を返しませんでした: {type(result_data)}")
-                        
                         result = result_data['content']
                         stats = result_data['stats']
                         
@@ -456,6 +564,39 @@ with tab2:
                         st.write(f"**使用モデル**: {stats['model']}")
                         if stats['compressed']:
                             st.info("ℹ️ 入力データが圧縮されました")
+                        
+                        # 実際のコスト計算
+                        actual_input_tokens = estimate_tokens_multilingual(st.session_state.current_md_content)
+                        actual_output_tokens = estimate_tokens_multilingual(result)
+                        actual_cost = calculate_cost(
+                            actual_input_tokens,
+                            actual_output_tokens,
+                            selected_model_info,
+                            exchange_rate
+                        )
+                        
+                        st.write("**💰 実際のコスト:**")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric(
+                                "入力コスト",
+                                f"¥{actual_cost['input_cost_jpy']:.2f}",
+                                f"{actual_input_tokens:,} tokens"
+                            )
+                        with col2:
+                            st.metric(
+                                "出力コスト",
+                                f"¥{actual_cost['output_cost_jpy']:.2f}",
+                                f"{actual_output_tokens:,} tokens"
+                            )
+                        with col3:
+                            st.metric(
+                                "合計コスト",
+                                f"¥{actual_cost['total_cost_jpy']:.2f}",
+                                f"${actual_cost['total_cost_usd']:.4f}"
+                            )
+                        
+                        st.caption(f"為替レート: {exchange_rate:.1f}円/USD（設定値）")
                         
                         # 結果表示（整形済みMarkdown・横スクロール防止）
                         st.markdown("---")
