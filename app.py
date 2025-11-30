@@ -10,13 +10,17 @@ from pathlib import Path
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+import json
+import zipfile
+from io import BytesIO
 
 
 def estimate_tokens_multilingual(text):
     """
     多言語対応のトークン推定
-    日本語: 1文字 ≈ 1.5トークン
-    英語: 1単語 ≈ 1.3トークン (1文字 ≈ 0.26トークン)
+    日本語: 1.5文字 ≈ 1トークン（1文字 ≈ 0.67トークン）
+    英語: 1単語 ≈ 1.3トークン (4文字 ≈ 1トークン)
     """
     # 日本語文字（ひらがな、カタカナ、漢字）をカウント
     japanese_chars = sum(1 for c in text if '\u3040' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff')
@@ -24,9 +28,9 @@ def estimate_tokens_multilingual(text):
     other_chars = len(text) - japanese_chars
     
     # 推定トークン数
-    # 日本語: 1.5トークン/文字
-    # 英語など: 0.26トークン/文字
-    estimated_tokens = int(japanese_chars * 1.5 + other_chars * 0.26)
+    # 日本語: 1.5文字 ≈ 1トークン
+    # 英語など: 4文字 ≈ 1トークン
+    estimated_tokens = int(japanese_chars / 1.5 + other_chars / 4)
     
     return estimated_tokens
 
@@ -107,6 +111,21 @@ st.markdown("""
         padding: 1.5rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
+    }
+    /* Tighter line spacing for markdown content */
+    .compact-content p {
+        margin-bottom: 0.5rem !important;
+        line-height: 1.4 !important;
+    }
+    .compact-content h1, .compact-content h2, .compact-content h3 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+    .compact-content ul, .compact-content ol {
+        margin-bottom: 0.5rem !important;
+    }
+    .compact-content li {
+        margin-bottom: 0.2rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -476,13 +495,13 @@ with tab2:
             
             # 出力トークン推定（出力タイプに基づく）
             if "400字" in output_type:
-                output_tokens_est = int(400 * 1.5)  # 日本語想定
+                output_tokens_est = int(400 / 1.5)  # 日本語: 1.5文字≈1トークン
             elif "2000字" in output_type:
-                output_tokens_est = int(2000 * 1.5)
+                output_tokens_est = int(2000 / 1.5)
             elif "5000字" in output_type:
-                output_tokens_est = int(5000 * 1.5)
+                output_tokens_est = int(5000 / 1.5)
             else:
-                output_tokens_est = int(2000 * 1.5)  # デフォルト
+                output_tokens_est = int(2000 / 1.5)  # デフォルト
             
             # コスト計算
             cost_estimate = calculate_cost(
@@ -625,11 +644,11 @@ with tab2:
                         
                         st.caption(f"為替レート: {exchange_rate:.1f}円/USD | ※思考トークン等は含まれません")
                         
-                        # 結果表示（整形済みMarkdown・横スクロール防止）
+                        # 結果表示（整形済みMarkdown・横スクロール防止・行間調整）
                         st.markdown("---")
                         st.subheader("📄 生成されたレポート")
                         st.markdown(
-                            f'<div style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{result}</div>',
+                            f'<div class="compact-content" style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{result}</div>',
                             unsafe_allow_html=True
                         )
                         
@@ -680,10 +699,6 @@ with tab3:
         
         # 一括ダウンロード機能
         if st.button("📦 全レポートを一括ダウンロード (ZIP)", use_container_width=True):
-            import zipfile
-            from io import BytesIO
-            import json
-            
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 for idx, record in enumerate(st.session_state.output_history):
@@ -767,9 +782,9 @@ with tab3:
                 
                 st.markdown("---")
                 
-                # レポート内容表示（整形済み・横スクロール防止）
+                # レポート内容表示（整形済み・横スクロール防止・行間調整）
                 st.markdown(
-                    f'<div style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{record["content"]}</div>',
+                    f'<div class="compact-content" style="word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{record["content"]}</div>',
                     unsafe_allow_html=True
                 )
                 
@@ -830,21 +845,214 @@ with tab4:
 
 
 with tab5:
+    st.markdown("## 🔧 詳細設定・前提情報")
+    
+    # トークン推定ロジック
+    st.markdown("---")
+    st.markdown("### 💡 トークン数推定のロジック")
+    
     st.markdown("""
-    ## 🔧 詳細設定
+    **多言語対応の推定式**:
+    - 日本語文字（ひらがな、カタカナ、漢字）: **1.5文字 ≈ 1トークン**
+    - その他の文字（英語、数字、記号等）: **4文字 ≈ 1トークン**
     
-    ### Streamlit Secrets設定
-    
-    本番環境では、Streamlit Cloud の Secrets 機能を使用してAPIキーを安全に管理できます。
-    
-    ```toml
-    # .streamlit/secrets.toml
-    OPENAI_API_KEY = "your-openai-key"
-    ANTHROPIC_API_KEY = "your-anthropic-key"
-    GOOGLE_API_KEY = "your-google-key"
-    ```
+    **計算例**:
     """)
     
+    col1, col2 = st.columns(2)
+    with col1:
+        st.code("""
+例1: 日本語のみ
+「今日は良い天気です」（10文字）
+→ 10 ÷ 1.5 ≈ 7 tokens
+
+例2: 英語のみ
+"Hello world" (11文字)
+→ 11 ÷ 4 ≈ 3 tokens
+        """, language="text")
+    
+    with col2:
+        st.code("""
+例3: 混合テキスト
+"Today は晴れ" (9文字)
+英語: "Today " = 6文字 → 1.5 tokens
+日本語: "は晴れ" = 3文字 → 2 tokens
+合計: ≈ 3.5 tokens
+        """, language="text")
+    
+    st.info("""
+    **注意事項**:
+    - これはあくまで概算値です
+    - 実際のトークン化は各AIモデルで異なります
+    - 誤差は±15-25%程度を想定してください
+    - 特殊文字や絵文字は予測が困難な場合があります
+    """)
+    
+    # コスト計算のロジック
+    st.markdown("---")
+    st.markdown("### 💰 コスト計算のロジック")
+    
+    st.markdown("**基本計算式**:")
+    st.code("""
+入力コスト = (入力トークン数 ÷ 1,000,000) × 入力単価($/1M) × 為替レート(円/USD)
+出力コスト = (出力トークン数 ÷ 1,000,000) × 出力単価($/1M) × 為替レート(円/USD)
+合計コスト = 入力コスト + 出力コスト
+    """, language="text")
+    
+    st.markdown("**計算例** (Gemini 2.5 Flash-Lite、為替150円/USD):")
+    st.code("""
+モデル単価: 入力 $0.10/1M、出力 $0.40/1M
+入力: 30,000 tokens、出力: 3,000 tokens
+
+入力コスト = (30,000 ÷ 1,000,000) × $0.10 × 150 = ¥0.45
+出力コスト = (3,000 ÷ 1,000,000) × $0.40 × 150 = ¥0.18
+合計コスト = ¥0.63
+    """, language="text")
+    
+    st.warning("""
+    **含まれないコスト要素**:
+    - ❌ 思考トークン（o1モデル等で使用される内部推論トークン）
+    - ❌ システムプロンプトのトークン
+    - ❌ Few-shot例のトークン
+    - ❌ APIリクエストの基本料金（通常は無料）
+    
+    **含まれるコスト要素**:
+    - ✅ ユーザー入力（変換されたMarkdownテキスト）
+    - ✅ モデル出力（生成されたレポート）
+    
+    **精度について**:
+    - 推定誤差: ±10-20%程度
+    - o1モデル等の思考トークンを使用するモデルでは、実際のコストはこの推定値より高くなります
+    - あくまで目安としてご利用ください
+    """)
+    
+    # 各出力タイプの指示文
+    st.markdown("---")
+    st.markdown("### 📝 各出力タイプの指示文")
+    
+    tab_400, tab_2000, tab_5000 = st.tabs(["400字版", "2000字版", "5000字版"])
+    
+    with tab_400:
+        st.markdown("**400字版 - エグゼクティブサマリー**")
+        st.code("""
+以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。
+        """, language="text")
+    
+    with tab_2000:
+        st.markdown("**2000字版 - 構造化レポート（推奨）**")
+        st.code("""
+以下の議論データを分析し、2000字程度の構造化レポートを作成してください。
+
+レポート構成:
+1. 全体サマリー（200字）
+2. 主要な意見の整理（頻出意見と高評価意見の対比を含む）
+3. 特筆すべき少数意見
+4. 結論と示唆
+        """, language="text")
+    
+    with tab_5000:
+        st.markdown("**5000字版 - 詳細分析レポート**")
+        st.code("""
+以下の議論データを詳細に分析し、5000字程度の包括的レポートを作成してください。
+
+レポート構成:
+1. エグゼクティブサマリー（300字）
+2. 議論の背景と目的
+3. 主要トピックごとの詳細分析
+   - 各トピックについて、賛成意見・反対意見・中立意見を整理
+   - 高評価を得た意見の詳細な分析
+4. 頻出キーワードと傾向分析
+5. 特筆すべき少数意見・独創的な提案
+6. 総合的な結論と今後の検討課題
+        """, language="text")
+    
+    st.info("**カスタム指示**: 上記の指示文を参考に、自由に改変してお使いいただけます。")
+    
+    # 暗黙の前提条件
+    st.markdown("---")
+    st.markdown("### ⚠️ 暗黙の前提と制限事項")
+    
+    st.markdown("""
+    **データ形式**:
+    - VFからダウンロードしたZIPファイルを想定
+    - ZIP内にCSV形式の議論データが含まれることを前提
+    - 文字コード: UTF-8を推奨（Shift-JISも自動検出）
+    
+    **トークン制限**:
+    - 各モデルには入力トークン数の上限があります
+    - 使用率が60%未満: 安全
+    - 使用率が60-80%: 注意
+    - 使用率が80%以上: 自動圧縮を実施
+    - 圧縮により一部情報が省略される可能性があります
+    
+    **APIキー**:
+    - 各プロバイダーのAPIキーが必要
+    - キーの有効性チェックは行いません（エラー時に初めて判明）
+    - セッション中のみ保持（ブラウザリロードで消去）
+    
+    **為替レート**:
+    - 手動設定（自動更新機能なし）
+    - デフォルト: 150円/USD
+    - 実際の為替レートを確認して設定してください
+    
+    **生成されたレポート**:
+    - セッション中のみ保持
+    - ブラウザをリロードすると履歴が消去されます
+    - 重要なレポートは必ずダウンロードしてください
+    
+    **コスト推定の精度**:
+    - トークン数: ±15-25%の誤差
+    - コスト: ±10-20%の誤差
+    - o1モデル等では思考トークンにより実コストが高くなります
+    """)
+    
+    # モデル設定編集（上級者向け）
+    st.markdown("---")
+    st.markdown("### 🔧 モデル設定編集（上級者向け）")
+    
+    st.warning("""
+    **注意**: この機能は上級者向けです。設定を誤るとアプリが動作しなくなる可能性があります。
+    - 変更はセッション中のみ有効（リロードでリセット）
+    - Pythonの辞書形式を理解している必要があります
+    - バックアップを取ってから編集してください
+    """)
+    
+    if st.checkbox("モデル設定を編集する（上級者向け）"):
+        st.markdown("**現在のモデル設定 (model_data.py より)**:")
+        
+        # model_data.pyの内容を読み込む
+        try:
+            with open('/home/claude/discussion_analyzer/model_data.py', 'r', encoding='utf-8') as f:
+                model_data_content = f.read()
+            
+            # テキストエリアで編集可能
+            edited_content = st.text_area(
+                "モデル設定を編集:",
+                value=model_data_content,
+                height=400,
+                help="Pythonの辞書形式で記述してください"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ 設定を反映（セッション中のみ）", type="primary"):
+                    try:
+                        # 設定を一時的に反映
+                        exec(edited_content, globals())
+                        st.success("✅ 設定を反映しました（セッション中のみ有効）")
+                        st.info("ページをリロードすると元の設定に戻ります")
+                    except Exception as e:
+                        st.error(f"❌ エラー: {str(e)}")
+                        st.warning("設定の書式を確認してください")
+            
+            with col2:
+                if st.button("🔄 リセット"):
+                    st.rerun()
+        
+        except FileNotFoundError:
+            st.error("model_data.pyが見つかりません")
+    
+    # 既存の内容
     st.markdown("---")
     st.markdown("### 📋 対応モデル一覧")
     
@@ -904,6 +1112,17 @@ with tab5:
     - **大きなファイル**: トークン制限の80%を超えると自動圧縮
     - **GPT-5 Pro**: TPM制限があるため、大きなファイルは自動的に20,000トークンに制限されます
     - **コスト最適化**: mini/flash/haiku モデルは経済的
+    
+    ### Streamlit Secrets設定
+    
+    本番環境では、Streamlit Cloud の Secrets 機能を使用してAPIキーを安全に管理できます。
+    
+    ```toml
+    # .streamlit/secrets.toml
+    OPENAI_API_KEY = "your-openai-key"
+    ANTHROPIC_API_KEY = "your-anthropic-key"
+    GOOGLE_API_KEY = "your-google-key"
+    ```
     """)
 
 
