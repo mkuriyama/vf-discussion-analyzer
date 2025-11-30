@@ -15,6 +15,10 @@ import json
 import zipfile
 from io import BytesIO
 
+# 静的コンテンツのインポート
+import content_reference as ref
+import content_settings as settings
+
 
 def estimate_tokens_multilingual(text):
     """
@@ -713,6 +717,19 @@ with tab3:
                     stats = record.get('stats', {})
                     cost = record.get('cost', {})
                     
+                    # コスト内訳を計算
+                    input_tokens = cost.get('input_tokens', 0)
+                    output_tokens = cost.get('output_tokens', 0)
+                    total_jpy = cost.get('total_jpy', 0)
+                    total_tokens = input_tokens + output_tokens
+                    
+                    if total_tokens > 0:
+                        input_cost_jpy = total_jpy * input_tokens / total_tokens
+                        output_cost_jpy = total_jpy * output_tokens / total_tokens
+                    else:
+                        input_cost_jpy = 0
+                        output_cost_jpy = 0
+                    
                     metadata_md = f"""# レポートメタデータ
 
 ## 基本情報
@@ -733,11 +750,11 @@ with tab3:
 - **データ圧縮**: {'あり' if stats.get('compressed', False) else 'なし'}
 
 ## コスト情報
-- **入力トークン**: {cost.get('input_tokens', 0):,} tokens
-- **出力トークン**: {cost.get('output_tokens', 0):,} tokens
-- **入力コスト**: ¥{cost.get('total_jpy', 0) * cost.get('input_tokens', 0) / (cost.get('input_tokens', 0) + cost.get('output_tokens', 1)):.2f} if cost.get('input_tokens', 0) + cost.get('output_tokens', 0) > 0 else 0}
-- **出力コスト**: ¥{cost.get('total_jpy', 0) * cost.get('output_tokens', 0) / (cost.get('input_tokens', 1) + cost.get('output_tokens', 0)):.2f} if cost.get('input_tokens', 0) + cost.get('output_tokens', 0) > 0 else 0}
-- **合計コスト**: ¥{cost.get('total_jpy', 0):.2f} (${cost.get('total_usd', 0):.4f})
+- **入力トークン**: {input_tokens:,} tokens
+- **出力トークン**: {output_tokens:,} tokens
+- **入力コスト**: ¥{input_cost_jpy:.2f}
+- **出力コスト**: ¥{output_cost_jpy:.2f}
+- **合計コスト**: ¥{total_jpy:.2f} (${cost.get('total_usd', 0):.4f})
 - **為替レート**: {cost.get('exchange_rate', 150):.1f}円/USD
 
 ---
