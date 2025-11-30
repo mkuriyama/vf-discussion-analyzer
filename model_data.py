@@ -117,7 +117,7 @@ MODEL_SPECS = {
     },
     
     # ==================== Anthropic (Claude) ====================
-    "Anthropic": {
+    "Anthropic (Claude)": {
         # Claude 4.5 シリーズ
         "claude-opus-4-5-20251101": {
             "name": "Claude Opus 4.5",
@@ -149,7 +149,7 @@ MODEL_SPECS = {
     },
     
     # ==================== Google (Gemini) ====================
-    "Google": {
+    "Google (Gemini)": {
         # 11月20日発表のGemini 3系列
         "gemini-3-pro-preview": {
             "name": "Gemini 3 Pro Preview",
