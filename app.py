@@ -751,21 +751,21 @@ with tab2:
                 total_cost_jpy = cost_estimate['total_cost_jpy'] + image_cost_jpy
                 
                 st.info(f"""
-                💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)
-                
-                **フェーズ1: プロンプト生成**（言語モデル: {selected_model_info['name']}）
-                • 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
-                • 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
-                • 小計: ¥{cost_estimate['total_cost_jpy']:.2f} (${cost_estimate['total_cost_usd']:.4f})
-                
-                **フェーズ2: 画像生成**（画像モデル: {selected_image_model_info['name']}）
-                • サイズ: {selected_image_size}
-                • 品質: {selected_image_quality}
-                • 小計: ¥{image_cost_jpy:.2f} (${image_cost_usd:.4f})
-                
-                **合計: ¥{total_cost_jpy:.2f}** (${total_cost_usd:.4f})
-                
-                ※実際のコストは出力内容により変動します
+💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)
+
+**フェーズ1: プロンプト生成**（言語モデル: {selected_model_info['name']}）  
+• 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
+• 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
+• 小計: ¥{cost_estimate['total_cost_jpy']:.2f} (${cost_estimate['total_cost_usd']:.4f})
+
+**フェーズ2: 画像生成**（画像モデル: {selected_image_model_info['name']}）  
+• サイズ: {selected_image_size}  
+• 品質: {selected_image_quality}  
+• 小計: ¥{image_cost_jpy:.2f} (${image_cost_usd:.4f})
+
+**合計: ¥{total_cost_jpy:.2f}** (${total_cost_usd:.4f})
+
+※実際のコストは出力内容により変動します
                 """)
             else:
                 st.info(f"""
@@ -1498,11 +1498,9 @@ with tab5:
             default_size = info.get('default_size', info.get('supported_sizes', info.get('available_sizes', ['1024x1024']))[0])
             default_quality = info.get('default_quality', info.get('supported_quality', info.get('available_qualities', ['standard']))[0])
             
-            # プロバイダーキーを小文字に変換（関数が期待する形式）
-            provider_key_lower = "openai" if provider_key == "OpenAI" else "google"
-            
+            # プロバイダーキーをそのまま使用（大文字小文字を保持）
             cost_usd = image_model_data.calculate_image_cost(
-                provider_key_lower,
+                provider_key,  # "OpenAI" or "Google (Gemini)"
                 model_id,
                 default_size,
                 default_quality,
@@ -1581,6 +1579,6 @@ with tab5:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9rem;">
-    <p>Powered by OpenAI API | Built with Streamlit</p>
+    <p>Powered by OpenAI API • Anthropic Claude API • Google Gemini API | Built with Streamlit</p>
 </div>
 """, unsafe_allow_html=True)
