@@ -615,18 +615,29 @@ with tab2:
                         import time
                         start_time = time.time()
                         
+                        # プロバイダーに応じたAPIキーを選択
+                        if ai_provider == "OpenAI":
+                            api_key = openai_api_key
+                        elif ai_provider == "Anthropic (Claude)":
+                            api_key = anthropic_api_key
+                        elif ai_provider == "Google (Gemini)":
+                            api_key = google_api_key
+                        else:
+                            api_key = None
+                        
                         # レポート生成
-                        result = ai_generator.generate_summary(
+                        result = ai_generator.generate_report(
                             st.session_state.current_md_content,
                             final_instruction,
-                            ai_provider,
+                            api_key,
                             selected_model,
-                            openai_api_key=openai_api_key,
-                            anthropic_api_key=anthropic_api_key,
-                            google_api_key=google_api_key
+                            provider=ai_provider
                         )
                         
-                        processing_time = time.time() - start_time
+                        # generate_reportは辞書を返す
+                        report_content = result['content']
+                        report_stats = result['stats']
+                        processing_time = report_stats['processing_time']
                         
                         # 結果表示（Markdownレンダリング）
                         st.markdown("---")
@@ -634,7 +645,7 @@ with tab2:
                         
                         # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
                         st.markdown('<div class="compact-content">', unsafe_allow_html=True)
-                        st.markdown(result, unsafe_allow_html=True)
+                        st.markdown(report_content, unsafe_allow_html=True)
                         st.markdown('</div>', unsafe_allow_html=True)
                         
                         # 履歴に保存
@@ -646,16 +657,16 @@ with tab2:
                             'model': selected_model,
                             'model_name': selected_model_info['name'],
                             'custom_instruction': final_instruction if edit_mode or selected_template['name'] == 'カスタム指示' else None,
-                            'content': result,
+                            'content': report_content,
                             'stats': {
                                 'processing_time': processing_time,
-                                'output_bytes': len(result.encode('utf-8')),
-                                'output_chars': len(result),
-                                'compressed': False
+                                'output_bytes': report_stats['output_bytes'],
+                                'output_chars': report_stats['output_chars'],
+                                'compressed': report_stats['compressed']
                             },
                             'cost': {
                                 'input_tokens': input_tokens_est,
-                                'output_tokens': estimate_tokens_multilingual(result),
+                                'output_tokens': estimate_tokens_multilingual(report_content),
                                 'total_usd': cost_estimate['total_cost_usd'],
                                 'total_jpy': cost_estimate['total_cost_jpy'],
                                 'exchange_rate': exchange_rate
@@ -668,12 +679,12 @@ with tab2:
                         st.success(f"""
                         ✅ **生成完了！**  
                         • 処理時間: {processing_time:.1f}秒  
-                        • 出力: {len(result):,} bytes ({len(result)//1024:.1f} KB)  
-                        • 文字数: {len(result):,}字
+                        • 出力: {report_stats['output_bytes']:,} bytes ({report_stats['output_bytes']//1024:.1f} KB)  
+                        • 文字数: {report_stats['output_chars']:,}字
                         """)
                         
                         # 使用量ベースのコスト推定
-                        actual_output_tokens = estimate_tokens_multilingual(result)
+                        actual_output_tokens = estimate_tokens_multilingual(report_content)
                         actual_cost = calculate_cost(
                             input_tokens_est,
                             actual_output_tokens,
@@ -691,7 +702,7 @@ with tab2:
                         # ダウンロードボタン
                         st.download_button(
                             label="📥 レポートをダウンロード",
-                            data=result,
+                            data=report_content,
                             file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                             mime="text/markdown"
                         )
