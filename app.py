@@ -989,7 +989,7 @@ with tab2:
                                 mime="text/markdown"
                             )
                             
-                            except Exception as e:
+                        except Exception as e:
                             st.error(f"エラーが発生しました: {str(e)}")
                             st.info("APIキーが正しく設定されているか、モデルが選択されているか確認してください。")
 
