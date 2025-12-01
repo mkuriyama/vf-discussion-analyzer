@@ -40,8 +40,34 @@ def generate_image_openai(prompt, api_key, model="dall-e-3", size="1024x1024", q
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         
+        # GPT-Image-1シリーズの場合
+        if model.startswith("gpt-image-"):
+            response = client.images.generate(
+                model=model,
+                prompt=prompt,
+                size=size,
+                quality=quality,
+                n=1
+            )
+            
+            # レスポンスからURLまたはbase64データを取得
+            if hasattr(response.data[0], 'url') and response.data[0].url:
+                image_url = response.data[0].url
+                # 画像をダウンロード
+                image_response = requests.get(image_url)
+                image_data = image_response.content
+            elif hasattr(response.data[0], 'b64_json'):
+                # base64データの場合
+                import base64
+                image_data = base64.b64decode(response.data[0].b64_json)
+                image_url = None
+            else:
+                raise Exception("画像URLまたはbase64データが取得できませんでした")
+            
+            revised_prompt = response.data[0].revised_prompt if hasattr(response.data[0], 'revised_prompt') else prompt
+        
         # DALL-E 3の場合
-        if model == "dall-e-3":
+        elif model == "dall-e-3":
             response = client.images.generate(
                 model=model,
                 prompt=prompt,
@@ -52,6 +78,10 @@ def generate_image_openai(prompt, api_key, model="dall-e-3", size="1024x1024", q
             
             image_url = response.data[0].url
             revised_prompt = response.data[0].revised_prompt if hasattr(response.data[0], 'revised_prompt') else prompt
+            
+            # 画像をダウンロード
+            image_response = requests.get(image_url)
+            image_data = image_response.content
             
         # DALL-E 2の場合
         else:
@@ -64,10 +94,10 @@ def generate_image_openai(prompt, api_key, model="dall-e-3", size="1024x1024", q
             
             image_url = response.data[0].url
             revised_prompt = prompt
-        
-        # 画像をダウンロード
-        image_response = requests.get(image_url)
-        image_data = image_response.content
+            
+            # 画像をダウンロード
+            image_response = requests.get(image_url)
+            image_data = image_response.content
         
         return {
             'image_url': image_url,

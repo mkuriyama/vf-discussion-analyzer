@@ -1307,13 +1307,30 @@ with tab3:
                     with detail_col1:
                         if 'stats' in record:
                             stats = record['stats']
-                            st.write(f"• 処理時間: {stats.get('processing_time', 0):.1f}秒")
-                            st.write(f"• 出力サイズ: {stats.get('output_bytes', 0)/1024:.1f} KB")
+                            # 画像とテキストで異なるフィールド名に対応
+                            if output_format == 'image':
+                                total_time = stats.get('total_time', 0)
+                                prompt_chars = stats.get('prompt_chars', 0)
+                                st.write(f"• 処理時間: {total_time:.1f}秒")
+                                st.write(f"• プロンプト: {prompt_chars:,}字")
+                            else:
+                                processing_time = stats.get('processing_time', 0)
+                                output_bytes = stats.get('output_bytes', 0)
+                                st.write(f"• 処理時間: {processing_time:.1f}秒")
+                                st.write(f"• 出力サイズ: {output_bytes/1024:.1f} KB")
                     
                     with detail_col2:
                         if cost_info:
-                            st.write(f"• 入力: {cost_info.get('input_tokens', 0):,} tokens")
-                            st.write(f"• 出力: {cost_info.get('output_tokens', 0):,} tokens")
+                            # 画像とテキストで異なるフィールド名に対応
+                            if output_format == 'image':
+                                phase1_tokens = cost_info.get('phase1_input_tokens', 0) + cost_info.get('phase1_output_tokens', 0)
+                                st.write(f"• 言語モデル: {phase1_tokens:,} tokens")
+                                st.write(f"• 画像: ¥{cost_info.get('phase2_cost_jpy', 0):.2f}")
+                            else:
+                                input_tokens = cost_info.get('input_tokens', 0)
+                                output_tokens = cost_info.get('output_tokens', 0)
+                                st.write(f"• 入力: {input_tokens:,} tokens")
+                                st.write(f"• 出力: {output_tokens:,} tokens")
                 
                 st.markdown("---")
                 
@@ -1455,72 +1472,75 @@ with tab5:
     st.markdown("### 🎨 画像生成モデル一覧")
     
     # プロバイダー別に画像モデルを表示
-    for provider_name, provider_key in [("OpenAI", "OpenAI"), ("Google (Gemini)", "Google")]:
+    for provider_display, provider_key in [("OpenAI", "OpenAI"), ("Google (Gemini)", "Google (Gemini)")]:
         if provider_key not in image_model_data.IMAGE_MODELS:
             continue
+        
+        st.markdown(f"#### {provider_display}")
+        
+        provider_models = image_model_data.IMAGE_MODELS[provider_key]
+        
+        if not provider_models:
+            st.info(f"{provider_display}の画像モデルは現在登録されていません")
+            continue
+        
+        image_model_list = []
+        for model_id, info in provider_models.items():
+            # 基本情報
+            name = info['name']
+            description = info['description']
             
-        with st.expander(f"**{provider_name}** 画像生成モデル", expanded=False):
-            provider_models = image_model_data.IMAGE_MODELS[provider_key]
+            # サイズと品質
+            sizes = ', '.join(info.get('supported_sizes', info.get('available_sizes', ['N/A'])))
+            qualities = ', '.join(info.get('supported_quality', info.get('available_qualities', ['N/A'])))
             
-            if not provider_models:
-                st.info(f"{provider_name}の画像モデルは現在登録されていません")
-                continue
+            # コスト（デフォルトサイズで計算）
+            default_size = info.get('default_size', info.get('supported_sizes', info.get('available_sizes', ['1024x1024']))[0])
+            default_quality = info.get('default_quality', info.get('supported_quality', info.get('available_qualities', ['standard']))[0])
             
-            image_model_list = []
-            for model_id, info in provider_models.items():
-                # 基本情報
-                name = info['name']
-                description = info['description']
-                
-                # サイズと品質
-                sizes = ', '.join(info.get('supported_sizes', info.get('available_sizes', ['N/A'])))
-                qualities = ', '.join(info.get('supported_quality', info.get('available_qualities', ['N/A'])))
-                
-                # コスト（デフォルトサイズで計算）
-                default_size = info.get('default_size', info.get('supported_sizes', info.get('available_sizes', ['1024x1024']))[0])
-                default_quality = info.get('default_quality', info.get('supported_quality', info.get('available_qualities', ['standard']))[0])
-                
-                # プロバイダーキーを小文字に変換（関数が期待する形式）
-                provider_key_lower = "openai" if provider_key == "OpenAI" else "google"
-                
-                cost_usd = image_model_data.calculate_image_cost(
-                    provider_key_lower,
-                    model_id,
-                    default_size,
-                    default_quality,
-                    num_images=1
-                )
-                cost_jpy = cost_usd * 150  # 為替150円で計算
-                
-                image_model_list.append({
-                    'モデル': name,
-                    'モデルID': f"`{model_id}`",
-                    'サイズ': sizes,
-                    '品質': qualities,
-                    'コスト (1枚)': f"${cost_usd:.4f} (¥{cost_jpy:.2f})",
-                    '説明': description
-                })
+            # プロバイダーキーを小文字に変換（関数が期待する形式）
+            provider_key_lower = "openai" if provider_key == "OpenAI" else "google"
             
-            # DataFrameで表示
-            df_image = pd.DataFrame(image_model_list)
-            st.dataframe(df_image, use_container_width=True, hide_index=True)
+            cost_usd = image_model_data.calculate_image_cost(
+                provider_key_lower,
+                model_id,
+                default_size,
+                default_quality,
+                num_images=1
+            )
+            cost_jpy = cost_usd * 150  # 為替150円で計算
             
-            # 追加の注意事項
-            if provider_key == "Google":
-                st.info("""
-                **Google画像モデルの特徴:**
-                - Gemini 3 Pro: 日本語テキスト対応（最高品質）
-                - Gemini 2.5 Flash: 日本語プロンプト対応（テキストは崩れる場合あり）
-                - Imagen 4: 英語テキストのみ推奨
-                """)
-            elif provider_key == "OpenAI":
-                st.info("""
-                **OpenAI画像モデルの特徴:**
-                - GPT-Image-1-Mini: 最安値・高速
-                - GPT-Image-1: 高品質
-                - 日本語テキスト対応
-                - 認証が必要な場合があります
-                """)
+            image_model_list.append({
+                'モデル': name,
+                'モデルID': f"`{model_id}`",
+                'サイズ': sizes,
+                '品質': qualities,
+                'コスト (1枚)': f"${cost_usd:.4f} (¥{cost_jpy:.2f})",
+                '説明': description
+            })
+        
+        # DataFrameで表示
+        df_image = pd.DataFrame(image_model_list)
+        st.dataframe(df_image, use_container_width=True, hide_index=True)
+        
+        # 追加の注意事項
+        if provider_key == "Google (Gemini)":
+            st.info("""
+            **Google画像モデルの特徴:**
+            - Gemini 3 Pro: 日本語テキスト対応（最高品質）
+            - Gemini 2.5 Flash: 日本語プロンプト対応（テキストは崩れる場合あり）
+            - Imagen 4: 英語テキストのみ推奨
+            """)
+        elif provider_key == "OpenAI":
+            st.info("""
+            **OpenAI画像モデルの特徴:**
+            - GPT-Image-1-Mini: 最安値・高速
+            - GPT-Image-1: 高品質
+            - 日本語テキスト対応
+            - 認証が必要な場合があります
+            """)
+        
+        st.markdown("")  # スペース
     
     # APIキーの取得、Tips、Secrets設定
     st.markdown("---")
