@@ -1455,33 +1455,36 @@ with tab5:
     st.markdown("### 🎨 画像生成モデル一覧")
     
     # プロバイダー別に画像モデルを表示
-    for provider_name, provider_key in [("OpenAI", "openai"), ("Google (Gemini)", "google")]:
+    for provider_name, provider_key in [("OpenAI", "OpenAI"), ("Google (Gemini)", "Google")]:
+        if provider_key not in image_model_data.IMAGE_MODELS:
+            continue
+            
         with st.expander(f"**{provider_name}** 画像生成モデル", expanded=False):
-            provider_models = [
-                (model_id, info) 
-                for model_id, info in image_model_data.IMAGE_MODELS.items() 
-                if info['provider'] == provider_key
-            ]
+            provider_models = image_model_data.IMAGE_MODELS[provider_key]
             
             if not provider_models:
                 st.info(f"{provider_name}の画像モデルは現在登録されていません")
                 continue
             
             image_model_list = []
-            for model_id, info in provider_models:
+            for model_id, info in provider_models.items():
                 # 基本情報
                 name = info['name']
                 description = info['description']
                 
                 # サイズと品質
-                sizes = ', '.join(info.get('available_sizes', ['N/A']))
-                qualities = ', '.join(info.get('available_qualities', ['N/A']))
+                sizes = ', '.join(info.get('supported_sizes', info.get('available_sizes', ['N/A'])))
+                qualities = ', '.join(info.get('supported_quality', info.get('available_qualities', ['N/A'])))
                 
                 # コスト（デフォルトサイズで計算）
-                default_size = info.get('available_sizes', ['1024x1024'])[0]
-                default_quality = info.get('available_qualities', ['standard'])[0]
+                default_size = info.get('default_size', info.get('supported_sizes', info.get('available_sizes', ['1024x1024']))[0])
+                default_quality = info.get('default_quality', info.get('supported_quality', info.get('available_qualities', ['standard']))[0])
+                
+                # プロバイダーキーを小文字に変換（関数が期待する形式）
+                provider_key_lower = "openai" if provider_key == "OpenAI" else "google"
+                
                 cost_usd = image_model_data.calculate_image_cost(
-                    provider_key,
+                    provider_key_lower,
                     model_id,
                     default_size,
                     default_quality,
@@ -1503,15 +1506,14 @@ with tab5:
             st.dataframe(df_image, use_container_width=True, hide_index=True)
             
             # 追加の注意事項
-            if provider_key == "google":
+            if provider_key == "Google":
                 st.info("""
                 **Google画像モデルの特徴:**
                 - Gemini 3 Pro: 日本語テキスト対応（最高品質）
-                - GPT-Image-1: 日本語テキスト対応（高品質）
                 - Gemini 2.5 Flash: 日本語プロンプト対応（テキストは崩れる場合あり）
                 - Imagen 4: 英語テキストのみ推奨
                 """)
-            elif provider_key == "openai":
+            elif provider_key == "OpenAI":
                 st.info("""
                 **OpenAI画像モデルの特徴:**
                 - GPT-Image-1-Mini: 最安値・高速
