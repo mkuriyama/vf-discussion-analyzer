@@ -104,59 +104,90 @@ def generate_image_google(prompt, api_key, model="imagen-4.0-generate-001", size
     """
     try:
         import google.generativeai as genai
+        import requests
+        import json
+        
         genai.configure(api_key=api_key)
         
         # モデル名からImagenのバージョンを判定
-        if "imagen-4" in model:
-            # Imagen 4シリーズ
-            imagen_model = genai.ImageGenerationModel(model)
+        if "imagen" in model.lower():
+            # Imagen 4シリーズは直接REST API経由で呼び出し
+            # Google AI StudioのREST APIエンドポイント
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:predict"
             
-            # 画像生成
-            response = imagen_model.generate_images(
-                prompt=prompt,
-                number_of_images=1,
-                aspect_ratio="1:1" if size == "1024x1024" else "4:3",
-                safety_filter_level="block_some",
-                person_generation="allow_adult"
-            )
-            
-            # 生成された画像を取得
-            image = response.images[0]
-            
-            # 画像データを取得（PIL ImageまたはBytes）
-            if hasattr(image, '_pil_image'):
-                # PIL Imageの場合
-                from io import BytesIO
-                img_byte_arr = BytesIO()
-                image._pil_image.save(img_byte_arr, format='PNG')
-                image_data = img_byte_arr.getvalue()
-            elif hasattr(image, '_image_bytes'):
-                # Bytesの場合
-                image_data = image._image_bytes
-            else:
-                # その他の場合は画像URLからダウンロード
-                import requests
-                if hasattr(image, 'url'):
-                    img_response = requests.get(image.url)
-                    image_data = img_response.content
-                else:
-                    raise Exception("画像データの取得に失敗しました")
-            
-            return {
-                'image_url': None,
-                'image_data': image_data,
-                'revised_prompt': prompt,  # Imagenはプロンプトを変更しない
-                'size': size,
-                'model': model,
-                'quality': quality
+            headers = {
+                "Content-Type": "application/json"
             }
             
-        elif "gemini" in model.lower():
+            # サイズからアスペクト比を決定
+            if size == "1024x1024":
+                aspect_ratio = "1:1"
+            elif size == "1536x1536":
+                aspect_ratio = "1:1"
+            else:
+                aspect_ratio = "1:1"
+            
+            payload = {
+                "instances": [{
+                    "prompt": prompt
+                }],
+                "parameters": {
+                    "sampleCount": 1,
+                    "aspectRatio": aspect_ratio
+                }
+            }
+            
+            # APIキーをクエリパラメータとして追加
+            response = requests.post(
+                f"{url}?key={api_key}",
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"Imagen API error: {response.status_code} - {response.text}")
+            
+            result = response.json()
+            
+            # Base64エンコードされた画像を取得
+            if "predictions" in result and len(result["predictions"]) > 0:
+                prediction = result["predictions"][0]
+                
+                # 画像データの取得方法はレスポンス構造に依存
+                if "bytesBase64Encoded" in prediction:
+                    import base64
+                    image_data = base64.b64decode(prediction["bytesBase64Encoded"])
+                elif "image" in prediction:
+                    if isinstance(prediction["image"], str):
+                        import base64
+                        image_data = base64.b64decode(prediction["image"])
+                    else:
+                        image_data = prediction["image"]
+                else:
+                    raise Exception(f"画像データが見つかりません: {prediction.keys()}")
+                
+                return {
+                    'image_url': None,
+                    'image_data': image_data,
+                    'revised_prompt': prompt,
+                    'size': size,
+                    'model': model,
+                    'quality': quality
+                }
+            else:
+                raise Exception(f"予期しないレスポンス構造: {result.keys()}")
+            
+        elif "gemini" in model.lower() and "image" in model.lower():
             # Gemini画像生成モデル
             # Gemini 2.5 Flash Image または Gemini 3 Pro Image
             gen_model = genai.GenerativeModel(model)
             
-            # 画像生成プロンプトを構築
+            # より明確な画像生成指示
+            image_generation_prompt = f"""Generate a high-quality image based on this description. Output only the image, no text or explanations.
+
+Description: {prompt}"""
+            
             generation_config = {
                 "temperature": 0.4,
                 "max_output_tokens": 8192,
@@ -164,7 +195,7 @@ def generate_image_google(prompt, api_key, model="imagen-4.0-generate-001", size
             
             # 画像生成を指示
             response = gen_model.generate_content(
-                f"Generate an image: {prompt}",
+                image_generation_prompt,
                 generation_config=generation_config
             )
             
@@ -177,7 +208,16 @@ def generate_image_google(prompt, api_key, model="imagen-4.0-generate-001", size
                     if hasattr(part, 'inline_data') and part.inline_data:
                         # Base64デコード
                         import base64
-                        image_data = base64.b64decode(part.inline_data.data)
+                        
+                        # データタイプを確認
+                        mime_type = part.inline_data.mime_type
+                        data = part.inline_data.data
+                        
+                        # dataがbytesの場合はそのまま、strの場合はbase64デコード
+                        if isinstance(data, bytes):
+                            image_data = data
+                        else:
+                            image_data = base64.b64decode(data)
                         
                         return {
                             'image_url': None,
@@ -187,6 +227,13 @@ def generate_image_google(prompt, api_key, model="imagen-4.0-generate-001", size
                             'model': model,
                             'quality': quality
                         }
+                
+                # 画像が見つからない場合、テキストレスポンスを確認
+                if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                    text_parts = [part.text for part in candidate.content.parts if hasattr(part, 'text')]
+                    if text_parts:
+                        error_msg = f"画像ではなくテキストが生成されました: {text_parts[0][:200]}"
+                        raise Exception(error_msg)
             
             raise Exception("画像生成レスポンスに画像データが含まれていません")
         

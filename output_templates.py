@@ -361,7 +361,14 @@ B: [回答や説明]
 出力形式:
 「A concept diagram showing [議論の主題]. The image features [主要な要素の説明]. The diagram uses [色やスタイルの説明]. Simple, clean, infographic style, white background.」
 
-という形式の英語プロンプトを1つ生成してください。""",
+という形式の英語プロンプトを1つ生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 300,
         'output_type': 'image'
     },
@@ -392,7 +399,14 @@ B: [回答や説明]
    - 簡潔な表現
 
 出力形式:
-英語プロンプト1つを「A professional presentation slide about [主題]. The slide features [要素の説明]. Clean, modern business presentation style, professional color scheme.」の形式で生成してください。""",
+英語プロンプト1つを「A professional presentation slide about [主題]. The slide features [要素の説明]. Clean, modern business presentation style, professional color scheme.」の形式で生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 300,
         'output_type': 'image'
     },
@@ -416,7 +430,14 @@ B: [回答や説明]
 - 白黒またはシンプルな色使い
 
 出力形式:
-「A 4-panel manga comic strip about [主題]. Panel 1: [シーン1の説明]. Panel 2: [シーン2の説明]. Panel 3: [シーン3の説明]. Panel 4: [シーン4の説明]. Simple, friendly illustration style, speech bubbles, easy to understand.」の形式で英語プロンプト1つを生成してください。""",
+「A 4-panel manga comic strip about [主題]. Panel 1: [シーン1の説明]. Panel 2: [シーン2の説明]. Panel 3: [シーン3の説明]. Panel 4: [シーン4の説明]. Simple, friendly illustration style, speech bubbles, easy to understand.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 400,
         'output_type': 'image'
     },
@@ -443,7 +464,14 @@ B: [回答や説明]
    - 必要に応じてテキストラベル
 
 出力形式:
-「An illustration representing [議論の本質]. The image shows [中心的な要素とシーンの説明]. [スタイルの説明], [ムードの説明]. Professional illustration, clean composition.」の形式で英語プロンプト1つを生成してください。""",
+「An illustration representing [議論の本質]. The image shows [中心的な要素とシーンの説明]. [スタイルの説明], [ムードの説明]. Professional illustration, clean composition.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 300,
         'output_type': 'image'
     },
@@ -468,7 +496,14 @@ B: [回答や説明]
 - プロフェッショナルなカラースキーム
 
 出力形式:
-「An academic conference poster about [主題]. The poster features [構成要素の説明]. Professional academic poster design, clear sections, data visualizations, readable from distance.」の形式で英語プロンプト1つを生成してください。""",
+「An academic conference poster about [主題]. The poster features [構成要素の説明]. Professional academic poster design, clear sections, data visualizations, readable from distance.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
@@ -495,7 +530,14 @@ B: [回答や説明]
    - ライティングに配慮
 
 出力形式:
-「A product concept image for [製品/サービス名]. The image shows [製品の説明]. [使用シーンまたは特徴の説明]. Modern, sleek product design, professional studio lighting.」の形式で英語プロンプト1つを生成してください。""",
+「A product concept image for [製品/サービス名]. The image shows [製品の説明]. [使用シーンまたは特徴の説明]. Modern, sleek product design, professional studio lighting.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
@@ -521,7 +563,14 @@ B: [回答や説明]
    - 感情的な訴求力
 
 出力形式:
-「A photorealistic scene showing [シーンの説明]. [人物や要素の説明]. [ライティングや雰囲気の説明]. Professional photography, high quality, detailed.」の形式で英語プロンプト1つを生成してください。""",
+「A photorealistic scene showing [シーンの説明]. [人物や要素の説明]. [ライティングや雰囲気の説明]. Professional photography, high quality, detailed.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
@@ -548,7 +597,14 @@ B: [回答や説明]
    - 親しみやすさも維持
 
 出力形式:
-「An educational infographic in English about [主題]. The image explains [説明内容]. Clear visual hierarchy, international design, professional and approachable style.」の形式で英語プロンプト1つを生成してください。""",
+「An educational infographic in English about [主題]. The image explains [説明内容]. Clear visual hierarchy, international design, professional and approachable style.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
@@ -575,7 +631,14 @@ B: [回答や説明]
    - ポジティブなメッセージ
 
 出力形式:
-「A cute, child-friendly illustration explaining [主題]. The image features [キャラクターや要素の説明]. Colorful, cheerful, educational, safe for children, kawaii style.」の形式で英語プロンプト1つを生成してください。""",
+「A cute, child-friendly illustration explaining [主題]. The image features [キャラクターや要素の説明]. Colorful, cheerful, educational, safe for children, kawaii style.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
@@ -602,7 +665,14 @@ B: [回答や説明]
    - 凡例とラベルが明確
 
 出力形式:
-「A professional data visualization showing [データの内容]. The chart is a [グラフタイプ] displaying [表示内容]. Clean, modern business chart design, clear labels and legend.」の形式で英語プロンプト1つを生成してください。""",
+「A professional data visualization showing [データの内容]. The chart is a [グラフタイプ] displaying [表示内容]. Clean, modern business chart design, clear labels and legend.」の形式で英語プロンプト1つを生成してください。
+
+【重要な制約】
+- 日本語での説明や要約は一切出力しないでください
+- 英語プロンプトのみを出力してください
+- プロンプトは1文または数文で完結させてください
+- 「以下のような」「このような」などの前置きは不要です
+- 英語プロンプトから直接始めてください""",
         'estimated_tokens': 350,
         'output_type': 'image'
     },
