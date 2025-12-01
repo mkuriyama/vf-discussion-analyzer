@@ -81,7 +81,7 @@ def generate_image_openai(prompt, api_key, model="dall-e-3", size="1024x1024", q
     except Exception as e:
         raise Exception(f"OpenAI画像生成エラー: {str(e)}")
 
-def generate_image_google(prompt, api_key, model="imagen-3.0-generate-001", size="1024x1024"):
+def generate_image_google(prompt, api_key, model="imagen-4.0-generate-001", size="1024x1024", quality="standard"):
     """
     Google Imagenで画像を生成
     
@@ -95,6 +95,8 @@ def generate_image_google(prompt, api_key, model="imagen-3.0-generate-001", size
         モデル名
     size : str
         画像サイズ
+    quality : str
+        品質（Imagen 4では使用されないが、インターフェース統一のため）
     
     Returns:
     --------
@@ -104,10 +106,92 @@ def generate_image_google(prompt, api_key, model="imagen-3.0-generate-001", size
         import google.generativeai as genai
         genai.configure(api_key=api_key)
         
-        # Imagen APIの呼び出し（実装は要確認）
-        # 注: 実際のImagenの使用方法に応じて調整が必要
+        # モデル名からImagenのバージョンを判定
+        if "imagen-4" in model:
+            # Imagen 4シリーズ
+            imagen_model = genai.ImageGenerationModel(model)
+            
+            # 画像生成
+            response = imagen_model.generate_images(
+                prompt=prompt,
+                number_of_images=1,
+                aspect_ratio="1:1" if size == "1024x1024" else "4:3",
+                safety_filter_level="block_some",
+                person_generation="allow_adult"
+            )
+            
+            # 生成された画像を取得
+            image = response.images[0]
+            
+            # 画像データを取得（PIL ImageまたはBytes）
+            if hasattr(image, '_pil_image'):
+                # PIL Imageの場合
+                from io import BytesIO
+                img_byte_arr = BytesIO()
+                image._pil_image.save(img_byte_arr, format='PNG')
+                image_data = img_byte_arr.getvalue()
+            elif hasattr(image, '_image_bytes'):
+                # Bytesの場合
+                image_data = image._image_bytes
+            else:
+                # その他の場合は画像URLからダウンロード
+                import requests
+                if hasattr(image, 'url'):
+                    img_response = requests.get(image.url)
+                    image_data = img_response.content
+                else:
+                    raise Exception("画像データの取得に失敗しました")
+            
+            return {
+                'image_url': None,
+                'image_data': image_data,
+                'revised_prompt': prompt,  # Imagenはプロンプトを変更しない
+                'size': size,
+                'model': model,
+                'quality': quality
+            }
+            
+        elif "gemini" in model.lower():
+            # Gemini画像生成モデル
+            # Gemini 2.5 Flash Image または Gemini 3 Pro Image
+            gen_model = genai.GenerativeModel(model)
+            
+            # 画像生成プロンプトを構築
+            generation_config = {
+                "temperature": 0.4,
+                "max_output_tokens": 8192,
+            }
+            
+            # 画像生成を指示
+            response = gen_model.generate_content(
+                f"Generate an image: {prompt}",
+                generation_config=generation_config
+            )
+            
+            # 生成された画像を取得
+            if response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                
+                # 画像パーツを探す
+                for part in candidate.content.parts:
+                    if hasattr(part, 'inline_data') and part.inline_data:
+                        # Base64デコード
+                        import base64
+                        image_data = base64.b64decode(part.inline_data.data)
+                        
+                        return {
+                            'image_url': None,
+                            'image_data': image_data,
+                            'revised_prompt': prompt,
+                            'size': size,
+                            'model': model,
+                            'quality': quality
+                        }
+            
+            raise Exception("画像生成レスポンスに画像データが含まれていません")
         
-        raise NotImplementedError("Google Imagen統合は今後実装予定です")
+        else:
+            raise Exception(f"サポートされていないモデル: {model}")
         
     except Exception as e:
         raise Exception(f"Google画像生成エラー: {str(e)}")
@@ -202,7 +286,7 @@ def generate_image(prompt, provider, model, api_key, size="1024x1024", quality="
     if provider == "OpenAI":
         return generate_image_openai(prompt, api_key, model, size, quality)
     elif provider == "Google (Gemini)":
-        return generate_image_google(prompt, api_key, model, size)
+        return generate_image_google(prompt, api_key, model, size, quality)
     elif provider == "Stability AI":
         return generate_image_stability(prompt, api_key, model, size)
     else:
