@@ -892,106 +892,106 @@ with tab2:
                     # テキストレポート生成（従来の処理）
                     # ========================================
                     with st.spinner('レポートを生成中...'):
-                    try:
-                        import time
-                        start_time = time.time()
-                        
-                        # プロバイダーに応じたAPIキーを選択
-                        if ai_provider == "OpenAI":
-                            api_key = openai_api_key
-                        elif ai_provider == "Anthropic (Claude)":
-                            api_key = anthropic_api_key
-                        elif ai_provider == "Google (Gemini)":
-                            api_key = google_api_key
-                        else:
-                            api_key = None
-                        
-                        # レポート生成
-                        result = ai_generator.generate_report(
-                            st.session_state.current_md_content,
-                            final_instruction,
-                            api_key,
-                            selected_model,
-                            provider=ai_provider
-                        )
-                        
-                        # generate_reportは辞書を返す
-                        report_content = result['content']
-                        report_stats = result['stats']
-                        processing_time = report_stats['processing_time']
-                        
-                        # 結果表示（Markdownレンダリング）
-                        st.markdown("---")
-                        st.subheader("📄 生成されたレポート")
-                        
-                        # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
-                        st.markdown('<div class="compact-content">', unsafe_allow_html=True)
-                        st.markdown(report_content, unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        # 履歴に保存
-                        output_record = {
-                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            'zip_file': st.session_state.uploaded_file_name,
-                            'output_type': selected_template['name'],
-                            'output_format': 'text',
-                            'provider': ai_provider,
-                            'model': selected_model,
-                            'model_name': selected_model_info['name'],
-                            'custom_instruction': final_instruction if edit_mode or selected_template['name'] == 'カスタム指示' else None,
-                            'content': report_content,
-                            'stats': {
-                                'processing_time': processing_time,
-                                'output_bytes': report_stats['output_bytes'],
-                                'output_chars': report_stats['output_chars'],
-                                'compressed': report_stats['compressed']
-                            },
-                            'cost': {
-                                'input_tokens': input_tokens_est,
-                                'output_tokens': estimate_tokens_multilingual(report_content),
-                                'total_usd': cost_estimate['total_cost_usd'],
-                                'total_jpy': cost_estimate['total_cost_jpy'],
-                                'exchange_rate': exchange_rate
+                        try:
+                            import time
+                            start_time = time.time()
+                            
+                            # プロバイダーに応じたAPIキーを選択
+                            if ai_provider == "OpenAI":
+                                api_key = openai_api_key
+                            elif ai_provider == "Anthropic (Claude)":
+                                api_key = anthropic_api_key
+                            elif ai_provider == "Google (Gemini)":
+                                api_key = google_api_key
+                            else:
+                                api_key = None
+                            
+                            # レポート生成
+                            result = ai_generator.generate_report(
+                                st.session_state.current_md_content,
+                                final_instruction,
+                                api_key,
+                                selected_model,
+                                provider=ai_provider
+                            )
+                            
+                            # generate_reportは辞書を返す
+                            report_content = result['content']
+                            report_stats = result['stats']
+                            processing_time = report_stats['processing_time']
+                            
+                            # 結果表示（Markdownレンダリング）
+                            st.markdown("---")
+                            st.subheader("📄 生成されたレポート")
+                            
+                            # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
+                            st.markdown('<div class="compact-content">', unsafe_allow_html=True)
+                            st.markdown(report_content, unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+                            # 履歴に保存
+                            output_record = {
+                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'zip_file': st.session_state.uploaded_file_name,
+                                'output_type': selected_template['name'],
+                                'output_format': 'text',
+                                'provider': ai_provider,
+                                'model': selected_model,
+                                'model_name': selected_model_info['name'],
+                                'custom_instruction': final_instruction if edit_mode or selected_template['name'] == 'カスタム指示' else None,
+                                'content': report_content,
+                                'stats': {
+                                    'processing_time': processing_time,
+                                    'output_bytes': report_stats['output_bytes'],
+                                    'output_chars': report_stats['output_chars'],
+                                    'compressed': report_stats['compressed']
+                                },
+                                'cost': {
+                                    'input_tokens': input_tokens_est,
+                                    'output_tokens': estimate_tokens_multilingual(report_content),
+                                    'total_usd': cost_estimate['total_cost_usd'],
+                                    'total_jpy': cost_estimate['total_cost_jpy'],
+                                    'exchange_rate': exchange_rate
+                                }
                             }
-                        }
-                        
-                        st.session_state.output_history.append(output_record)
-                        
-                        # 統計情報
-                        st.success(f"""
-                        ✅ **生成完了！**  
-                        • 処理時間: {processing_time:.1f}秒  
-                        • 出力: {report_stats['output_bytes']:,} bytes ({report_stats['output_bytes']//1024:.1f} KB)  
-                        • 文字数: {report_stats['output_chars']:,}字
-                        """)
-                        
-                        # 使用量ベースのコスト推定
-                        actual_output_tokens = estimate_tokens_multilingual(report_content)
-                        actual_cost = calculate_cost(
-                            input_tokens_est,
-                            actual_output_tokens,
-                            selected_model_info,
-                            exchange_rate
-                        )
-                        
-                        st.info(f"""
-                        💰 **使用量ベースのコスト推定**  
-                        • 入力: {input_tokens_est:,} tokens → ¥{actual_cost['input_cost_jpy']:.2f}  
-                        • 出力: {actual_output_tokens:,} tokens → ¥{actual_cost['output_cost_jpy']:.2f}  
-                        • **合計: ¥{actual_cost['total_cost_jpy']:.2f}** (${actual_cost['total_cost_usd']:.4f})
-                        """)
-                        
-                        # ダウンロードボタン
-                        st.download_button(
-                            label="📥 レポートをダウンロード",
-                            data=report_content,
-                            file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                            mime="text/markdown"
-                        )
-                        
-                    except Exception as e:
-                        st.error(f"エラーが発生しました: {str(e)}")
-                        st.info("APIキーが正しく設定されているか、モデルが選択されているか確認してください。")
+                            
+                            st.session_state.output_history.append(output_record)
+                            
+                            # 統計情報
+                            st.success(f"""
+                            ✅ **生成完了！**  
+                            • 処理時間: {processing_time:.1f}秒  
+                            • 出力: {report_stats['output_bytes']:,} bytes ({report_stats['output_bytes']//1024:.1f} KB)  
+                            • 文字数: {report_stats['output_chars']:,}字
+                            """)
+                            
+                            # 使用量ベースのコスト推定
+                            actual_output_tokens = estimate_tokens_multilingual(report_content)
+                            actual_cost = calculate_cost(
+                                input_tokens_est,
+                                actual_output_tokens,
+                                selected_model_info,
+                                exchange_rate
+                            )
+                            
+                            st.info(f"""
+                            💰 **使用量ベースのコスト推定**  
+                            • 入力: {input_tokens_est:,} tokens → ¥{actual_cost['input_cost_jpy']:.2f}  
+                            • 出力: {actual_output_tokens:,} tokens → ¥{actual_cost['output_cost_jpy']:.2f}  
+                            • **合計: ¥{actual_cost['total_cost_jpy']:.2f}** (${actual_cost['total_cost_usd']:.4f})
+                            """)
+                            
+                            # ダウンロードボタン
+                            st.download_button(
+                                label="📥 レポートをダウンロード",
+                                data=report_content,
+                                file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                                mime="text/markdown"
+                            )
+                            
+                            except Exception as e:
+                            st.error(f"エラーが発生しました: {str(e)}")
+                            st.info("APIキーが正しく設定されているか、モデルが選択されているか確認してください。")
 
 
 with tab3:
