@@ -5,57 +5,117 @@
 
 IMAGE_MODELS = {
     "OpenAI": {
-        "dall-e-3": {
-            "name": "DALL-E 3",
+        "gpt-image-1": {
+            "name": "GPT-Image-1",
             "provider": "OpenAI",
             "description": "高品質な画像生成、詳細な指示に対応",
             "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
-            "supported_quality": ["standard", "hd"],
+            "supported_quality": ["standard"],
             "cost_per_image": {
                 "1024x1024": {
-                    "standard": 0.040,  # USD
-                    "hd": 0.080
+                    "standard": 0.040  # 1K output tokens換算: 40/1000 * 1
                 },
                 "1024x1792": {
-                    "standard": 0.080,
-                    "hd": 0.120
+                    "standard": 0.072  # 約1.8K tokens
                 },
                 "1792x1024": {
-                    "standard": 0.080,
-                    "hd": 0.120
+                    "standard": 0.072  # 約1.8K tokens
                 }
             },
+            "cost_input_per_1m": 5.00,   # USD per 1M input tokens
+            "cost_output_per_1m": 40.00,  # USD per 1M output tokens
             "max_prompt_length": 4000,
             "default_size": "1024x1024",
             "default_quality": "standard"
         },
-        "dall-e-2": {
-            "name": "DALL-E 2",
+        "gpt-image-1-mini": {
+            "name": "GPT-Image-1-Mini",
             "provider": "OpenAI",
             "description": "コストパフォーマンスに優れた画像生成",
-            "supported_sizes": ["256x256", "512x512", "1024x1024"],
+            "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
             "supported_quality": ["standard"],
             "cost_per_image": {
-                "256x256": {
-                    "standard": 0.016
-                },
-                "512x512": {
-                    "standard": 0.018
-                },
                 "1024x1024": {
-                    "standard": 0.020
+                    "standard": 0.008  # 1K output tokens換算: 8/1000 * 1
+                },
+                "1024x1792": {
+                    "standard": 0.014  # 約1.8K tokens
+                },
+                "1792x1024": {
+                    "standard": 0.014  # 約1.8K tokens
                 }
             },
-            "max_prompt_length": 1000,
+            "cost_input_per_1m": 2.50,   # USD per 1M input tokens
+            "cost_output_per_1m": 8.00,   # USD per 1M output tokens
+            "max_prompt_length": 4000,
             "default_size": "1024x1024",
             "default_quality": "standard"
         }
     },
     "Google (Gemini)": {
-        "imagen-3.0-generate-001": {
-            "name": "Imagen 3",
+        "gemini-3-pro-image-preview": {
+            "name": "Gemini 3 Pro Image Preview",
             "provider": "Google (Gemini)",
-            "description": "Googleの最新画像生成モデル、高品質",
+            "description": "高品質な画像生成（プレビュー版）",
+            "supported_sizes": ["1024x1024", "2048x2048", "4096x4096"],
+            "supported_quality": ["1K", "2K", "4K"],
+            "cost_per_image": {
+                "1024x1024": {
+                    "1K": 0.134  # $120/1M tokens * 1.115 tokens per 1K image
+                },
+                "2048x2048": {
+                    "2K": 0.134  # Same as 1K
+                },
+                "4096x4096": {
+                    "4K": 0.240  # $120/1M tokens * 2K tokens per 4K image
+                }
+            },
+            "cost_input_per_1m": 2.00,    # USD per 1M input tokens (text/image)
+            "cost_output_per_1m": 120.00,  # USD per 1M output tokens (images)
+            "cost_output_text_per_1m": 12.00,  # USD per 1M output tokens (text)
+            "max_prompt_length": 8192,
+            "default_size": "1024x1024",
+            "default_quality": "1K"
+        },
+        "gemini-2.5-flash-image": {
+            "name": "Gemini 2.5 Flash Image",
+            "provider": "Google (Gemini)",
+            "description": "高速・低コストな画像生成",
+            "supported_sizes": ["1024x1024"],
+            "supported_quality": ["standard"],
+            "cost_per_image": {
+                "1024x1024": {
+                    "standard": 0.039  # $0.039 per image
+                }
+            },
+            "cost_input_per_1m": 0.30,   # USD per 1M input tokens
+            "cost_output_per_1m": 39.00,  # USD per 1M tokens (calculated from $0.039 per image)
+            "max_prompt_length": 8192,
+            "default_size": "1024x1024",
+            "default_quality": "standard"
+        },
+        "imagen-4.0-fast-generate-001": {
+            "name": "Imagen 4 Fast",
+            "provider": "Google (Gemini)",
+            "description": "高速な画像生成、最もコスト効率的",
+            "supported_sizes": ["1024x1024", "1536x1536"],
+            "supported_quality": ["standard"],
+            "cost_per_image": {
+                "1024x1024": {
+                    "standard": 0.020
+                },
+                "1536x1536": {
+                    "standard": 0.020
+                }
+            },
+            "max_prompt_length": 2048,
+            "default_size": "1024x1024",
+            "default_quality": "standard"
+        },
+        "imagen-4.0-generate-001": {
+            "name": "Imagen 4 Standard",
+            "provider": "Google (Gemini)",
+            "description": "標準品質の画像生成",
             "supported_sizes": ["1024x1024", "1536x1536"],
             "supported_quality": ["standard"],
             "cost_per_image": {
@@ -63,56 +123,30 @@ IMAGE_MODELS = {
                     "standard": 0.040
                 },
                 "1536x1536": {
-                    "standard": 0.080
+                    "standard": 0.040
                 }
             },
             "max_prompt_length": 2048,
             "default_size": "1024x1024",
             "default_quality": "standard"
         },
-        "imagen-2.0-generate-001": {
-            "name": "Imagen 2",
+        "imagen-4.0-ultra-generate-001": {
+            "name": "Imagen 4 Ultra",
             "provider": "Google (Gemini)",
-            "description": "前世代モデル、コスト効率的",
-            "supported_sizes": ["1024x1024"],
-            "supported_quality": ["standard"],
+            "description": "最高品質の画像生成",
+            "supported_sizes": ["1024x1024", "1536x1536"],
+            "supported_quality": ["ultra"],
             "cost_per_image": {
                 "1024x1024": {
-                    "standard": 0.020
+                    "ultra": 0.060
+                },
+                "1536x1536": {
+                    "ultra": 0.060
                 }
             },
             "max_prompt_length": 2048,
             "default_size": "1024x1024",
-            "default_quality": "standard"
-        }
-    },
-    "Stability AI": {
-        "stable-diffusion-xl-1024-v1-0": {
-            "name": "Stable Diffusion XL",
-            "provider": "Stability AI",
-            "description": "オープンソース、高品質な画像生成",
-            "supported_sizes": ["1024x1024", "1152x896", "896x1152", "1216x832", "832x1216"],
-            "supported_quality": ["standard"],
-            "cost_per_image": {
-                "1024x1024": {
-                    "standard": 0.020
-                },
-                "1152x896": {
-                    "standard": 0.020
-                },
-                "896x1152": {
-                    "standard": 0.020
-                },
-                "1216x832": {
-                    "standard": 0.020
-                },
-                "832x1216": {
-                    "standard": 0.020
-                }
-            },
-            "max_prompt_length": 2000,
-            "default_size": "1024x1024",
-            "default_quality": "standard"
+            "default_quality": "ultra"
         }
     }
 }
@@ -143,7 +177,7 @@ def calculate_image_cost(provider, model_id, size, quality, num_images=1):
     size : str
         画像サイズ（例: "1024x1024"）
     quality : str
-        品質（"standard" or "hd"）
+        品質（"standard", "1K", "2K", "4K", "ultra"など）
     num_images : int
         生成枚数
     
@@ -178,7 +212,8 @@ def get_default_image_model():
     """デフォルトの画像生成モデルを取得"""
     return {
         'provider': 'OpenAI',
-        'model_id': 'dall-e-3',
+        'model_id': 'gpt-image-1-mini',
         'size': '1024x1024',
         'quality': 'standard'
     }
+
