@@ -10,7 +10,7 @@ from pathlib import Path
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import json
 import zipfile
 from io import BytesIO
@@ -26,6 +26,20 @@ import model_specs
 import processor
 import image_model_data
 import image_generator
+
+
+# JST (Japan Standard Time) タイムゾーン
+JST = timezone(timedelta(hours=9))
+
+def get_jst_now():
+    """現在のJST時刻を取得"""
+    return datetime.now(JST)
+
+def format_jst_datetime(dt_str=None):
+    """JSTでフォーマットされた日時文字列を返す"""
+    if dt_str is None:
+        return get_jst_now().strftime('%Y-%m-%d %H:%M:%S JST')
+    return dt_str  # 既存のタイムスタンプはそのまま表示
 
 
 def estimate_tokens_multilingual(text):
@@ -637,20 +651,31 @@ with tab2:
         
         # 日本語対応テンプレートの場合は注意書きを表示
         if selected_template.get('requires_japanese', False):
-            st.warning("""
-            ⚠️ **日本語テキスト対応テンプレート**
+            # 現在のモデルが推奨かどうか判定
+            is_gemini_3_pro = 'gemini-3-pro' in selected_image_model.lower()
+            is_gpt_image = 'gpt-image' in selected_image_model.lower()
+            
+            if is_gemini_3_pro:
+                model_status = "✅ 最適"
+            elif is_gpt_image:
+                model_status = "✅ 推奨"
+            else:
+                model_status = "⚠️ 品質が低い可能性"
+            
+            st.warning(f"""
+            ℹ️ **日本語テキスト対応テンプレート**
             
             このテンプレートは画像内に日本語テキストを含みます。
             
-            **推奨モデル**:
-            - ✅ Gemini 2.5 Flash Image
-            - ✅ Gemini 3 Pro Image Preview
+            **推奨モデル（最新モデル推奨）**:
+            - 🌟 Gemini 3 Pro Image Preview（最高品質）
+            - ✅ GPT-Image-1シリーズ（高品質）
+            - △ Gemini 2.5 Flash Image（日本語テキストが崩れる場合あり）
             
             **非推奨モデル**:
-            - ❌ Imagen 4シリーズ（日本語テキストの品質が低い場合があります）
-            - ❌ OpenAI DALL-E（日本語非対応）
+            - ❌ Imagen 4シリーズ（日本語テキストの品質が低い）
             
-            現在選択中: **{selected_image_model_info['name']}**
+            現在選択中: **{selected_image_model_info['name']}** ({model_status})
             """)
         
         # 指示文の表示と編集
@@ -882,7 +907,7 @@ with tab2:
                             
                             # 履歴に保存
                             output_record = {
-                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'timestamp': get_jst_now().strftime('%Y-%m-%d %H:%M:%S JST'),
                                 'zip_file': st.session_state.uploaded_file_name,
                                 'output_type': selected_template['name'],
                                 'output_format': 'image',
@@ -902,7 +927,8 @@ with tab2:
                                     'phase1_time': phase1_time,
                                     'phase2_time': phase2_time,
                                     'total_time': total_time,
-                                    'prompt_chars': len(image_prompt)
+                                    'prompt_chars': len(image_prompt),
+                                    'prompt_tokens': phase1_output_tokens
                                 },
                                 'cost': {
                                     'phase1_input_tokens': phase1_input_tokens,
@@ -925,14 +951,14 @@ with tab2:
                                 st.download_button(
                                     label="📥 画像をダウンロード",
                                     data=image_result['image_data'],
-                                    file_name=f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+                                    file_name=f"image_{get_jst_now().strftime('%Y%m%d_%H%M%S')}.png",
                                     mime="image/png"
                                 )
                             with col2:
                                 st.download_button(
                                     label="📝 プロンプトをダウンロード",
                                     data=image_prompt,
-                                    file_name=f"prompt_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                                    file_name=f"prompt_{get_jst_now().strftime('%Y%m%d_%H%M%S')}.txt",
                                     mime="text/plain"
                                 )
                             
@@ -984,7 +1010,7 @@ with tab2:
                             
                             # 履歴に保存
                             output_record = {
-                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'timestamp': get_jst_now().strftime('%Y-%m-%d %H:%M:%S JST'),
                                 'zip_file': st.session_state.uploaded_file_name,
                                 'output_type': selected_template['name'],
                                 'output_format': 'text',
@@ -1038,7 +1064,7 @@ with tab2:
                             st.download_button(
                                 label="📥 レポートをダウンロード",
                                 data=report_content,
-                                file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                                file_name=f"report_{get_jst_now().strftime('%Y%m%d_%H%M%S')}.md",
                                 mime="text/markdown"
                             )
                             
@@ -1181,7 +1207,7 @@ with tab3:
             st.download_button(
                 label="💾 ZIPファイルをダウンロード",
                 data=zip_buffer.getvalue(),
-                file_name=f"all_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                file_name=f"all_reports_{get_jst_now().strftime('%Y%m%d_%H%M%S')}.zip",
                 mime="application/zip",
                 use_container_width=True
             )
@@ -1197,17 +1223,19 @@ with tab3:
             
             # タイトルの作成（形式に応じて）
             model_name = record.get('model_name', record['model'])
+            zip_file = record.get('zip_file', 'N/A')
             
             if output_format == 'image':
                 # 画像の場合のタイトル
                 icon = "🖼️"
                 size_info = record.get('image_size', 'N/A')
-                title = f"{icon} {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {size_info}"
+                image_model_name = record.get('image_model_name', 'N/A')
+                title = f"{icon} {record['timestamp']} | {zip_file} | {record['output_type']} | 言語:{model_name} 画像:{image_model_name} | {cost_display} | {size_info}"
             else:
                 # テキストの場合のタイトル
                 icon = "📄"
                 content_length = len(record.get('content', ''))
-                title = f"{icon} {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {content_length:,}字"
+                title = f"{icon} {record['timestamp']} | {zip_file} | {record['output_type']} | {model_name} | {cost_display} | {content_length:,}字"
             
             with st.expander(title, expanded=(idx == 0)):
                 # メタデータ表示（形式に応じて）
@@ -1240,6 +1268,15 @@ with tab3:
                         
                         st.markdown("**合計:**")
                         st.write(f"• **¥{cost_info.get('total_jpy', 0):.2f}** (${cost_info.get('total_usd', 0):.4f})")
+                    
+                    # 処理統計（expanderで）
+                    stats = record.get('stats', {})
+                    with st.expander("📊 処理統計"):
+                        st.write(f"**フェーズ1 処理時間**: {stats.get('phase1_time', 0):.1f}秒")
+                        st.write(f"**フェーズ2 処理時間**: {stats.get('phase2_time', 0):.1f}秒")
+                        st.write(f"**合計処理時間**: {stats.get('total_time', 0):.1f}秒")
+                        st.write(f"**プロンプト文字数**: {stats.get('prompt_chars', 0):,}字")
+                        st.write(f"**プロンプトトークン数**: {stats.get('prompt_tokens', 0):,} tokens")
                 
                 else:
                     # テキストの場合のメタデータ（従来の処理）
@@ -1362,26 +1399,6 @@ with tab4:
     
     st.warning(ref.COST_CALCULATION_WARNING)
     
-    # 各出力タイプの指示文
-    st.markdown("---")
-    st.markdown("### 📝 各出力タイプの指示文")
-    
-    tab_400, tab_2000, tab_5000 = st.tabs(["400字版", "2000字版", "5000字版"])
-    
-    with tab_400:
-        st.markdown("**400字版 - エグゼクティブサマリー**")
-        st.code(ref.OUTPUT_INSTRUCTIONS["400字版"], language="text")
-    
-    with tab_2000:
-        st.markdown("**2000字版 - 構造化レポート（推奨）**")
-        st.code(ref.OUTPUT_INSTRUCTIONS["2000字版"], language="text")
-    
-    with tab_5000:
-        st.markdown("**5000字版 - 詳細分析レポート**")
-        st.code(ref.OUTPUT_INSTRUCTIONS["5000字版"], language="text")
-    
-    st.info(ref.OUTPUT_INSTRUCTIONS_NOTE)
-    
     # 暗黙の前提条件
     st.markdown("---")
     st.markdown("### ⚠️ 暗黙の前提と制限事項")
@@ -1432,6 +1449,76 @@ with tab5:
         st.dataframe(df, use_container_width=True, hide_index=True)
         
         st.markdown("")
+    
+    # 画像生成モデル情報
+    st.markdown("---")
+    st.markdown("### 🎨 画像生成モデル一覧")
+    
+    # プロバイダー別に画像モデルを表示
+    for provider_name, provider_key in [("OpenAI", "openai"), ("Google (Gemini)", "google")]:
+        with st.expander(f"**{provider_name}** 画像生成モデル", expanded=False):
+            provider_models = [
+                (model_id, info) 
+                for model_id, info in image_model_data.IMAGE_MODELS.items() 
+                if info['provider'] == provider_key
+            ]
+            
+            if not provider_models:
+                st.info(f"{provider_name}の画像モデルは現在登録されていません")
+                continue
+            
+            image_model_list = []
+            for model_id, info in provider_models:
+                # 基本情報
+                name = info['name']
+                description = info['description']
+                
+                # サイズと品質
+                sizes = ', '.join(info.get('available_sizes', ['N/A']))
+                qualities = ', '.join(info.get('available_qualities', ['N/A']))
+                
+                # コスト（デフォルトサイズで計算）
+                default_size = info.get('available_sizes', ['1024x1024'])[0]
+                default_quality = info.get('available_qualities', ['standard'])[0]
+                cost_usd = image_model_data.calculate_image_cost(
+                    provider_key,
+                    model_id,
+                    default_size,
+                    default_quality,
+                    num_images=1
+                )
+                cost_jpy = cost_usd * 150  # 為替150円で計算
+                
+                image_model_list.append({
+                    'モデル': name,
+                    'モデルID': f"`{model_id}`",
+                    'サイズ': sizes,
+                    '品質': qualities,
+                    'コスト (1枚)': f"${cost_usd:.4f} (¥{cost_jpy:.2f})",
+                    '説明': description
+                })
+            
+            # DataFrameで表示
+            df_image = pd.DataFrame(image_model_list)
+            st.dataframe(df_image, use_container_width=True, hide_index=True)
+            
+            # 追加の注意事項
+            if provider_key == "google":
+                st.info("""
+                **Google画像モデルの特徴:**
+                - Gemini 3 Pro: 日本語テキスト対応（最高品質）
+                - GPT-Image-1: 日本語テキスト対応（高品質）
+                - Gemini 2.5 Flash: 日本語プロンプト対応（テキストは崩れる場合あり）
+                - Imagen 4: 英語テキストのみ推奨
+                """)
+            elif provider_key == "openai":
+                st.info("""
+                **OpenAI画像モデルの特徴:**
+                - GPT-Image-1-Mini: 最安値・高速
+                - GPT-Image-1: 高品質
+                - 日本語テキスト対応
+                - 認証が必要な場合があります
+                """)
     
     # APIキーの取得、Tips、Secrets設定
     st.markdown("---")
