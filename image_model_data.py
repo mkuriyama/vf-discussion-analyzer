@@ -10,46 +10,64 @@ IMAGE_MODELS = {
             "provider": "OpenAI",
             "description": "高品質な画像生成、詳細な指示に対応",
             "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
-            "supported_quality": ["standard"],
+            "supported_quality": ["auto", "low", "medium", "high"],
             "cost_per_image": {
                 "1024x1024": {
-                    "standard": 0.040  # 1K output tokens換算: 40/1000 * 1
+                    "auto": 0.040,  # 1K output tokens換算: 40/1000 * 1
+                    "low": 0.040,
+                    "medium": 0.040,
+                    "high": 0.040
                 },
                 "1024x1792": {
-                    "standard": 0.072  # 約1.8K tokens
+                    "auto": 0.072,  # 約1.8K tokens
+                    "low": 0.072,
+                    "medium": 0.072,
+                    "high": 0.072
                 },
                 "1792x1024": {
-                    "standard": 0.072  # 約1.8K tokens
+                    "auto": 0.072,  # 約1.8K tokens
+                    "low": 0.072,
+                    "medium": 0.072,
+                    "high": 0.072
                 }
             },
             "cost_input_per_1m": 5.00,   # USD per 1M input tokens
             "cost_output_per_1m": 40.00,  # USD per 1M output tokens
             "max_prompt_length": 4000,
             "default_size": "1024x1024",
-            "default_quality": "standard"
+            "default_quality": "auto"
         },
         "gpt-image-1-mini": {
             "name": "GPT-Image-1-Mini",
             "provider": "OpenAI",
             "description": "コストパフォーマンスに優れた画像生成",
             "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
-            "supported_quality": ["standard"],
+            "supported_quality": ["auto", "low", "medium", "high"],
             "cost_per_image": {
                 "1024x1024": {
-                    "standard": 0.008  # 1K output tokens換算: 8/1000 * 1
+                    "auto": 0.008,  # 1K output tokens換算: 8/1000 * 1
+                    "low": 0.008,
+                    "medium": 0.008,
+                    "high": 0.008
                 },
                 "1024x1792": {
-                    "standard": 0.014  # 約1.8K tokens
+                    "auto": 0.014,  # 約1.8K tokens
+                    "low": 0.014,
+                    "medium": 0.014,
+                    "high": 0.014
                 },
                 "1792x1024": {
-                    "standard": 0.014  # 約1.8K tokens
+                    "auto": 0.014,  # 約1.8K tokens
+                    "low": 0.014,
+                    "medium": 0.014,
+                    "high": 0.014
                 }
             },
             "cost_input_per_1m": 2.50,   # USD per 1M input tokens
             "cost_output_per_1m": 8.00,   # USD per 1M output tokens
             "max_prompt_length": 4000,
             "default_size": "1024x1024",
-            "default_quality": "standard"
+            "default_quality": "auto"
         }
     },
     "Google (Gemini)": {
