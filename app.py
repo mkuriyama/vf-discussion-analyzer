@@ -18,6 +18,7 @@ from io import BytesIO
 # 静的コンテンツのインポート
 import content_reference as ref
 import content_settings as settings
+import output_templates as templates
 
 
 def estimate_tokens_multilingual(text):
@@ -495,72 +496,93 @@ with tab2:
     else:
         st.success(f"✅ ファイル: {st.session_state.uploaded_file_name}")
         
-        # 出力タイプ選択
-        st.subheader("📝 出力タイプ選択")
+        # 出力テンプレート選択
+        st.subheader("📝 出力形式選択")
         
-        output_type = st.radio(
-            "レポートの種類を選択してください:",
-            [
-                "400字版 - エグゼクティブサマリー",
-                "2000字版 - 構造化レポート（推奨）",
-                "5000字版 - 詳細分析レポート",
-                "カスタム - 自由記述で指示"
-            ],
-            index=1,
-            help="デフォルトは2000字版がおすすめです"
+        # カテゴリ別の選択肢を作成
+        categorized = templates.get_categorized_template_names()
+        
+        # 選択肢をフラット化（カテゴリプレフィックス付き）
+        template_options = []
+        template_map = {}  # 表示名 -> テンプレートオブジェクト
+        
+        for category, template_names in categorized.items():
+            for name in template_names:
+                template_obj = templates.get_template_by_name(name)
+                if template_obj:
+                    # 表示形式: "カテゴリ > テンプレート名"
+                    display_name = f"{category} > {name}"
+                    template_options.append(display_name)
+                    template_map[display_name] = template_obj
+        
+        # セッション状態で選択を保持
+        if 'selected_template_display' not in st.session_state:
+            # デフォルトは2000字版
+            default_name = "要約・サマリー > 2000字版 - 構造化レポート"
+            st.session_state.selected_template_display = default_name if default_name in template_options else template_options[0]
+        
+        # ドロップダウンで選択
+        selected_display = st.selectbox(
+            "出力形式を選択してください:",
+            options=template_options,
+            index=template_options.index(st.session_state.selected_template_display) if st.session_state.selected_template_display in template_options else 0,
+            help="カテゴリ別に整理された出力形式から選択できます"
         )
         
-        # 選択された出力タイプの指示文を表示
-        with st.expander("💡 選択中の出力タイプの指示文（参考）"):
-            if "400字" in output_type:
-                st.code("""以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。""", language="text")
-            elif "2000字" in output_type:
-                st.code("""以下の議論データを分析し、2000字程度の構造化レポートを作成してください。
-
-レポート構成:
-1. 全体サマリー（200字）
-2. 主要な意見の整理（頻出意見と高評価意見の対比を含む）
-3. 特筆すべき少数意見
-4. 結論と示唆""", language="text")
-            elif "5000字" in output_type:
-                st.code("""以下の議論データを詳細に分析し、5000字程度の包括的レポートを作成してください。
-
-レポート構成:
-1. エグゼクティブサマリー（300字）
-2. 議論の背景と目的
-3. 主要トピックごとの詳細分析
-   - 各トピックについて、賛成意見・反対意見・中立意見を整理
-   - 高評価を得た意見の詳細な分析
-4. 頻出キーワードと傾向分析
-5. 特筆すべき少数意見・独創的な提案
-6. 総合的な結論と今後の検討課題""", language="text")
-            else:
-                st.info("カスタム指示を下記に入力してください。上記の指示文を参考に、自由に改変できます。")
+        # 選択を保存
+        st.session_state.selected_template_display = selected_display
         
-        # カスタム指示入力
-        custom_instruction = None
-        if "カスタム" in output_type:
-            custom_instruction = st.text_area(
-                "出力内容の指示を入力してください:",
-                height=200,
-                placeholder="例: 主要な意見を3つに絞り、それぞれについて賛成・反対の意見を対比させてください。全体で1500字程度でまとめてください。"
+        # 選択されたテンプレートを取得
+        selected_template = template_map[selected_display]
+        
+        # テンプレートの説明を表示
+        st.info(f"📄 **{selected_template['description']}**")
+        
+        # 指示文の表示と編集
+        st.subheader("✏️ 指示文")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("**現在の指示文:**")
+        with col2:
+            edit_mode = st.checkbox("編集する", value=False, key="edit_instruction")
+        
+        if edit_mode or selected_template['name'] == 'カスタム指示':
+            # 編集可能モード
+            if 'edited_instruction' not in st.session_state or st.session_state.get('last_template') != selected_template['name']:
+                st.session_state.edited_instruction = selected_template['instruction']
+                st.session_state.last_template = selected_template['name']
+            
+            edited_instruction = st.text_area(
+                "指示文を編集:",
+                value=st.session_state.edited_instruction,
+                height=300,
+                help="この指示文を編集して、カスタマイズしたレポートを生成できます",
+                label_visibility="collapsed"
             )
+            
+            st.session_state.edited_instruction = edited_instruction
+            
+            # 編集している場合の注意
+            if edited_instruction != selected_template['instruction']:
+                st.warning("⚠️ 指示文が編集されています。元に戻す場合は「編集する」のチェックを外してください。")
+            
+            final_instruction = edited_instruction
+        else:
+            # 表示のみモード
+            if selected_template['instruction']:
+                st.code(selected_template['instruction'], language="text")
+            else:
+                st.info("カスタム指示を使用する場合は、「編集する」にチェックを入れて指示文を入力してください。")
+            
+            final_instruction = selected_template['instruction']
         
         st.markdown("---")
         
         # コスト推定を表示
-        if st.session_state.current_md_content:
+        if st.session_state.current_md_content and final_instruction:
             input_tokens_est = estimate_tokens_multilingual(st.session_state.current_md_content)
-            
-            # 出力トークン推定（出力タイプに基づく）
-            if "400字" in output_type:
-                output_tokens_est = int(400 / 1.5)  # 日本語: 1.5文字≈1トークン
-            elif "2000字" in output_type:
-                output_tokens_est = int(2000 / 1.5)
-            elif "5000字" in output_type:
-                output_tokens_est = int(5000 / 1.5)
-            else:
-                output_tokens_est = int(2000 / 1.5)  # デフォルト
+            output_tokens_est = selected_template['estimated_tokens']
             
             # コスト計算
             cost_estimate = calculate_cost(
@@ -580,128 +602,27 @@ with tab2:
             """)
         
         # 生成ボタン
-        if st.button("🚀 レポート生成", type="primary", use_container_width=True):
-            if not api_key:
-                st.error(f"❌ {ai_provider} のAPIキーを設定してください")
-            elif "カスタム" in output_type and not custom_instruction:
-                st.error("❌ カスタム指示を入力してください")
+        if st.button("🚀 レポート生成", type="primary", use_container_width=True, disabled=not final_instruction):
+            if not final_instruction:
+                st.error("指示文が入力されていません")
             else:
-                with st.spinner("🔄 AIでレポート生成中..."):
-                    import ai_generator
-                    from datetime import datetime
-                    
+                with st.spinner('レポートを生成中...'):
                     try:
-                        # 指示文の準備
-                        if "400字" in output_type:
-                            instruction = "以下の議論データから、最も重要なポイントのみを抽出し、400字以内のエグゼクティブサマリーを作成してください。"
-                        elif "2000字" in output_type:
-                            instruction = """以下の議論データを分析し、2000字程度の構造化レポートを作成してください。
-                            
-レポート構成:
-1. 全体サマリー（200字）
-2. 主要な意見の整理（頻出意見と高評価意見の対比を含む）
-3. 特筆すべき少数意見
-4. 結論と示唆
-"""
-                        elif "5000字" in output_type:
-                            instruction = """以下の議論データの詳細分析レポートを5000字程度で作成してください。
-
-レポート構成:
-1. エグゼクティブサマリー
-2. データ概要（参加者数、設問数など）
-3. 設問別の詳細分析
-   - 回答分布
-   - 高評価意見の分析
-   - 多数意見と少数意見の対比
-4. 横断的な分析
-   - 共通テーマの抽出
-   - 意見の対立軸の可視化
-5. 結論と提言
-"""
-                        else:
-                            instruction = custom_instruction
+                        import time
+                        start_time = time.time()
                         
-                        # AI生成（プロバイダー対応）
-                        result_data = ai_generator.generate_report(
-                            md_content=st.session_state.current_md_content,
-                            instruction=instruction,
-                            api_key=api_key,
-                            model=selected_model,
-                            provider=ai_provider
+                        # レポート生成
+                        result = ai_generator.generate_summary(
+                            st.session_state.current_md_content,
+                            final_instruction,
+                            ai_provider,
+                            selected_model,
+                            openai_api_key=openai_api_key,
+                            anthropic_api_key=anthropic_api_key,
+                            google_api_key=google_api_key
                         )
                         
-                        result = result_data['content']
-                        stats = result_data['stats']
-                        
-                        st.success("✅ レポート生成完了")
-                        
-                        # 統計情報の表示
-                        st.write("**📊 生成統計:**")
-                        
-                        # 入力データ量の表示
-                        if 'conversion_stats' in st.session_state:
-                            conv_stats = st.session_state.conversion_stats
-                            st.write("**入力データ:**")
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("元ZIP", f"{conv_stats['zip_size_bytes']/1024:.1f} KB")
-                            with col2:
-                                st.metric("Markdown", f"{conv_stats['md_size_bytes']/1024:.1f} KB")
-                            with col3:
-                                st.metric("文字数", f"{conv_stats['md_char_count']:,}字")
-                        
-                        # 出力データ量と処理時間の表示
-                        st.write("**出力データ:**")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            # 処理時間を分と秒で表示
-                            if stats['processing_time'] >= 60:
-                                minutes = int(stats['processing_time'] // 60)
-                                seconds = stats['processing_time'] % 60
-                                st.metric("処理時間", f"{minutes}分{seconds:.0f}秒")
-                            else:
-                                st.metric("処理時間", f"{stats['processing_time']:.1f}秒")
-                        with col2:
-                            st.metric("出力文字数", f"{stats['output_chars']:,}字")
-                        with col3:
-                            st.metric("出力サイズ", f"{stats['output_bytes']/1024:.1f} KB")
-                        
-                        st.write(f"**使用モデル**: {stats['model']}")
-                        if stats['compressed']:
-                            st.info("ℹ️ 入力データが圧縮されました")
-                        
-                        # 使用量に基づくコスト推定
-                        actual_input_tokens = estimate_tokens_multilingual(st.session_state.current_md_content)
-                        actual_output_tokens = estimate_tokens_multilingual(result)
-                        actual_cost = calculate_cost(
-                            actual_input_tokens,
-                            actual_output_tokens,
-                            selected_model_info,
-                            exchange_rate
-                        )
-                        
-                        st.write("**💰 使用量ベースのコスト推定:**")
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric(
-                                "入力コスト",
-                                f"¥{actual_cost['input_cost_jpy']:.2f}",
-                                f"{actual_input_tokens:,} tokens"
-                            )
-                        with col2:
-                            st.metric(
-                                "出力コスト",
-                                f"¥{actual_cost['output_cost_jpy']:.2f}",
-                                f"{actual_output_tokens:,} tokens"
-                            )
-                        with col3:
-                            st.metric(
-                                "合計推定",
-                                f"¥{actual_cost['total_cost_jpy']:.2f}",
-                                f"${actual_cost['total_cost_usd']:.4f}"
-                            )
-                        
-                        st.caption(f"為替レート: {exchange_rate:.1f}円/USD | ※思考トークン等は含まれません")
+                        processing_time = time.time() - start_time
                         
                         # 結果表示（Markdownレンダリング）
                         st.markdown("---")
@@ -716,38 +637,65 @@ with tab2:
                         output_record = {
                             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             'zip_file': st.session_state.uploaded_file_name,
-                            'output_type': output_type,
-                            'custom_instruction': custom_instruction if custom_instruction else "-",
+                            'output_type': selected_template['name'],
                             'provider': ai_provider,
                             'model': selected_model,
                             'model_name': selected_model_info['name'],
+                            'custom_instruction': final_instruction if edit_mode or selected_template['name'] == 'カスタム指示' else None,
                             'content': result,
-                            'stats': stats,
+                            'stats': {
+                                'processing_time': processing_time,
+                                'output_bytes': len(result.encode('utf-8')),
+                                'output_chars': len(result),
+                                'compressed': False
+                            },
                             'cost': {
-                                'input_tokens': actual_input_tokens,
-                                'output_tokens': actual_output_tokens,
-                                'total_jpy': actual_cost['total_cost_jpy'],
-                                'total_usd': actual_cost['total_cost_usd'],
+                                'input_tokens': input_tokens_est,
+                                'output_tokens': estimate_tokens_multilingual(result),
+                                'total_usd': cost_estimate['total_cost_usd'],
+                                'total_jpy': cost_estimate['total_cost_jpy'],
                                 'exchange_rate': exchange_rate
                             }
                         }
-                        st.session_state.output_history.insert(0, output_record)
                         
-                        # ダウンロード
-                        st.markdown("---")
+                        st.session_state.output_history.append(output_record)
+                        
+                        # 統計情報
+                        st.success(f"""
+                        ✅ **生成完了！**  
+                        • 処理時間: {processing_time:.1f}秒  
+                        • 出力: {len(result):,} bytes ({len(result)//1024:.1f} KB)  
+                        • 文字数: {len(result):,}字
+                        """)
+                        
+                        # 使用量ベースのコスト推定
+                        actual_output_tokens = estimate_tokens_multilingual(result)
+                        actual_cost = calculate_cost(
+                            input_tokens_est,
+                            actual_output_tokens,
+                            selected_model_info,
+                            exchange_rate
+                        )
+                        
+                        st.info(f"""
+                        💰 **使用量ベースのコスト推定**  
+                        • 入力: {input_tokens_est:,} tokens → ¥{actual_cost['input_cost_jpy']:.2f}  
+                        • 出力: {actual_output_tokens:,} tokens → ¥{actual_cost['output_cost_jpy']:.2f}  
+                        • **合計: ¥{actual_cost['total_cost_jpy']:.2f}** (${actual_cost['total_cost_usd']:.4f})
+                        """)
+                        
+                        # ダウンロードボタン
                         st.download_button(
                             label="📥 レポートをダウンロード",
                             data=result,
-                            file_name=f"report_{Path(st.session_state.uploaded_file_name).stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                            mime="text/markdown",
-                            use_container_width=True
+                            file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                            mime="text/markdown"
                         )
                         
                     except Exception as e:
-                        st.error(f"❌ エラーが発生しました: {str(e)}")
-                        import traceback
-                        with st.expander("詳細なエラー情報"):
-                            st.code(traceback.format_exc())
+                        st.error(f"エラーが発生しました: {str(e)}")
+                        st.info("APIキーが正しく設定されているか、モデルが選択されているか確認してください。")
+
 
 with tab3:
     st.subheader("📚 出力結果一覧")
