@@ -24,6 +24,8 @@ import output_templates as templates
 import ai_generator
 import model_specs
 import processor
+import image_model_data
+import image_generator
 
 
 def estimate_tokens_multilingual(text):
@@ -396,6 +398,97 @@ else:
 
 st.sidebar.markdown("---")
 
+# 画像生成モデル選択
+st.sidebar.subheader("🎨 画像生成モデル選択")
+
+import image_model_data
+
+# 画像生成プロバイダーとモデルの取得
+image_providers = image_model_data.get_image_providers()
+
+# すべての画像モデルを統合
+all_image_models = []
+for provider_name in image_providers:
+    provider_models = image_model_data.get_image_models_by_provider(provider_name)
+    for model_id, info in provider_models.items():
+        all_image_models.append({
+            'id': model_id,
+            'name': info['name'],
+            'provider': provider_name,
+            'description': info['description'],
+            'default_size': info['default_size'],
+            'default_quality': info['default_quality']
+        })
+
+# 画像モデル選択
+image_model_options = []
+image_model_id_map = {}
+for model in all_image_models:
+    display_name = f"{model['name']}"
+    image_model_options.append(display_name)
+    image_model_id_map[display_name] = (model['id'], model['provider'])
+
+if image_model_options:
+    selected_image_display_name = st.sidebar.selectbox(
+        "画像生成モデル",
+        image_model_options,
+        index=0,  # デフォルトは最初のモデル
+        help="画像生成に使用するモデルを選択"
+    )
+    
+    # 選択されたモデルのIDとプロバイダーを取得
+    selected_image_model, image_provider = image_model_id_map[selected_image_display_name]
+    
+    # 選択されたプロバイダーに応じてAPIキーを設定
+    if image_provider == "OpenAI":
+        image_api_key = openai_api_key
+    else:  # Google (Gemini)
+        image_api_key = google_api_key
+    
+    # 画像モデル情報の取得
+    selected_image_model_info = image_model_data.get_image_model_info(image_provider, selected_image_model)
+    
+    # サイズと品質の選択
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        available_sizes = selected_image_model_info['supported_sizes']
+        selected_image_size = st.selectbox(
+            "サイズ",
+            available_sizes,
+            index=available_sizes.index(selected_image_model_info['default_size']),
+            help="生成する画像のサイズ"
+        )
+    
+    with col2:
+        available_qualities = selected_image_model_info['supported_quality']
+        selected_image_quality = st.selectbox(
+            "品質",
+            available_qualities,
+            index=available_qualities.index(selected_image_model_info['default_quality']),
+            help="画像の品質設定"
+        )
+    
+    # 画像モデル情報の表示
+    with st.sidebar.expander("📊 選択中の画像モデル情報", expanded=False):
+        st.write(f"**プロバイダー**: {image_provider}")
+        st.write(f"**モデル名**: {selected_image_model_info['name']}")
+        st.write(f"**説明**: {selected_image_model_info['description']}")
+        st.write(f"**モデルID**: `{selected_image_model}`")
+        
+        # コスト情報
+        st.markdown("**💰 コスト:**")
+        image_cost = image_model_data.calculate_image_cost(
+            image_provider,
+            selected_image_model,
+            selected_image_size,
+            selected_image_quality,
+            num_images=1
+        )
+        image_cost_jpy = image_cost * exchange_rate
+        st.write(f"• 1枚あたり: ${image_cost:.4f} (¥{image_cost_jpy:.2f})")
+
+st.sidebar.markdown("---")
+
 # ファイルアップロード
 st.sidebar.subheader("📁 ファイルアップロード")
 uploaded_file = st.sidebar.file_uploader(
@@ -606,11 +699,199 @@ with tab2:
             """)
         
         # 生成ボタン
-        if st.button("🚀 レポート生成", type="primary", use_container_width=True, disabled=not final_instruction):
+        is_image_template = selected_template.get('output_type') == 'image'
+        button_text = "🎨 画像生成" if is_image_template else "🚀 レポート生成"
+        
+        if st.button(button_text, type="primary", use_container_width=True, disabled=not final_instruction):
             if not final_instruction:
                 st.error("指示文が入力されていません")
             else:
-                with st.spinner('レポートを生成中...'):
+                # プロバイダーに応じたAPIキーを選択
+                if ai_provider == "OpenAI":
+                    api_key = openai_api_key
+                elif ai_provider == "Anthropic (Claude)":
+                    api_key = anthropic_api_key
+                elif ai_provider == "Google (Gemini)":
+                    api_key = google_api_key
+                else:
+                    api_key = None
+                
+                if is_image_template:
+                    # ========================================
+                    # 画像生成の2段階プロセス
+                    # ========================================
+                    
+                    # フェーズ1: 画像生成プロンプトの生成
+                    with st.spinner('🔤 画像生成プロンプトを作成中...'):
+                        try:
+                            import time
+                            phase1_start = time.time()
+                            
+                            result = ai_generator.generate_report(
+                                st.session_state.current_md_content,
+                                final_instruction,
+                                api_key,
+                                selected_model,
+                                provider=ai_provider
+                            )
+                            
+                            image_prompt = result['content'].strip()
+                            phase1_time = time.time() - phase1_start
+                            phase1_stats = result['stats']
+                            
+                            # プロンプト表示
+                            st.markdown("---")
+                            st.subheader("🔤 生成された画像プロンプト")
+                            st.code(image_prompt, language="text")
+                            
+                            st.info(f"✅ プロンプト生成完了（{phase1_time:.1f}秒）")
+                            
+                        except Exception as e:
+                            st.error(f"プロンプト生成エラー: {str(e)}")
+                            st.stop()
+                    
+                    # フェーズ2: 画像生成
+                    with st.spinner('🎨 画像を生成中...'):
+                        try:
+                            phase2_start = time.time()
+                            
+                            image_result = image_generator.generate_image(
+                                image_prompt,
+                                image_provider,
+                                selected_image_model,
+                                image_api_key,
+                                selected_image_size,
+                                selected_image_quality
+                            )
+                            
+                            phase2_time = time.time() - phase2_start
+                            total_time = phase1_time + phase2_time
+                            
+                            # 画像表示
+                            st.markdown("---")
+                            st.subheader("🖼️ 生成された画像")
+                            st.image(image_result['image_data'], use_column_width=True)
+                            
+                            # 改善されたプロンプト表示（DALL-Eの場合）
+                            if 'revised_prompt' in image_result and image_result['revised_prompt'] != image_prompt:
+                                with st.expander("📝 改善されたプロンプト（DALL-Eによる）"):
+                                    st.code(image_result['revised_prompt'], language="text")
+                            
+                            # 統計情報
+                            st.success(f"""
+                            ✅ **画像生成完了！**  
+                            • プロンプト生成: {phase1_time:.1f}秒  
+                            • 画像生成: {phase2_time:.1f}秒  
+                            • **合計処理時間**: {total_time:.1f}秒
+                            """)
+                            
+                            # コスト計算
+                            # フェーズ1（テキスト生成）のコスト
+                            phase1_input_tokens = input_tokens_est
+                            phase1_output_tokens = estimate_tokens_multilingual(image_prompt)
+                            phase1_cost = calculate_cost(
+                                phase1_input_tokens,
+                                phase1_output_tokens,
+                                selected_model_info,
+                                exchange_rate
+                            )
+                            
+                            # フェーズ2（画像生成）のコスト
+                            phase2_cost_usd = image_model_data.calculate_image_cost(
+                                image_provider,
+                                selected_image_model,
+                                selected_image_size,
+                                selected_image_quality,
+                                num_images=1
+                            )
+                            phase2_cost_jpy = phase2_cost_usd * exchange_rate
+                            
+                            # 合計コスト
+                            total_cost_usd = phase1_cost['total_cost_usd'] + phase2_cost_usd
+                            total_cost_jpy = phase1_cost['total_cost_jpy'] + phase2_cost_jpy
+                            
+                            st.info(f"""
+                            💰 **コスト内訳**  
+                            **フェーズ1（プロンプト生成）:**  
+                            • 言語モデル: {selected_model_info['name']}  
+                            • 入力: {phase1_input_tokens:,} tokens → ¥{phase1_cost['input_cost_jpy']:.2f}  
+                            • 出力: {phase1_output_tokens:,} tokens → ¥{phase1_cost['output_cost_jpy']:.2f}  
+                            • 小計: ¥{phase1_cost['total_cost_jpy']:.2f} (${phase1_cost['total_cost_usd']:.4f})
+                            
+                            **フェーズ2（画像生成）:**  
+                            • 画像モデル: {selected_image_model_info['name']}  
+                            • サイズ: {selected_image_size}  
+                            • 品質: {selected_image_quality}  
+                            • 小計: ¥{phase2_cost_jpy:.2f} (${phase2_cost_usd:.4f})
+                            
+                            **合計: ¥{total_cost_jpy:.2f}** (${total_cost_usd:.4f})
+                            """)
+                            
+                            # 履歴に保存
+                            output_record = {
+                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'zip_file': st.session_state.uploaded_file_name,
+                                'output_type': selected_template['name'],
+                                'output_format': 'image',
+                                'provider': ai_provider,
+                                'model': selected_model,
+                                'model_name': selected_model_info['name'],
+                                'image_provider': image_provider,
+                                'image_model': selected_image_model,
+                                'image_model_name': selected_image_model_info['name'],
+                                'image_size': selected_image_size,
+                                'image_quality': selected_image_quality,
+                                'prompt': image_prompt,
+                                'revised_prompt': image_result.get('revised_prompt', image_prompt),
+                                'image_data': image_result['image_data'],
+                                'custom_instruction': final_instruction if edit_mode or selected_template['name'] == 'カスタム指示' else None,
+                                'stats': {
+                                    'phase1_time': phase1_time,
+                                    'phase2_time': phase2_time,
+                                    'total_time': total_time,
+                                    'prompt_chars': len(image_prompt)
+                                },
+                                'cost': {
+                                    'phase1_input_tokens': phase1_input_tokens,
+                                    'phase1_output_tokens': phase1_output_tokens,
+                                    'phase1_cost_usd': phase1_cost['total_cost_usd'],
+                                    'phase1_cost_jpy': phase1_cost['total_cost_jpy'],
+                                    'phase2_cost_usd': phase2_cost_usd,
+                                    'phase2_cost_jpy': phase2_cost_jpy,
+                                    'total_usd': total_cost_usd,
+                                    'total_jpy': total_cost_jpy,
+                                    'exchange_rate': exchange_rate
+                                }
+                            }
+                            
+                            st.session_state.output_history.append(output_record)
+                            
+                            # ダウンロードボタン
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.download_button(
+                                    label="📥 画像をダウンロード",
+                                    data=image_result['image_data'],
+                                    file_name=f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+                                    mime="image/png"
+                                )
+                            with col2:
+                                st.download_button(
+                                    label="📝 プロンプトをダウンロード",
+                                    data=image_prompt,
+                                    file_name=f"prompt_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                                    mime="text/plain"
+                                )
+                            
+                        except Exception as e:
+                            st.error(f"画像生成エラー: {str(e)}")
+                            st.info("画像モデルのAPIキーが正しく設定されているか確認してください。")
+                
+                else:
+                    # ========================================
+                    # テキストレポート生成（従来の処理）
+                    # ========================================
+                    with st.spinner('レポートを生成中...'):
                     try:
                         import time
                         start_time = time.time()
@@ -653,6 +934,7 @@ with tab2:
                             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             'zip_file': st.session_state.uploaded_file_name,
                             'output_type': selected_template['name'],
+                            'output_format': 'text',
                             'provider': ai_provider,
                             'model': selected_model,
                             'model_name': selected_model_info['name'],
@@ -725,28 +1007,91 @@ with tab3:
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 for idx, record in enumerate(st.session_state.output_history):
-                    # レポート本文
-                    report_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_{record['output_type'].split(' ')[0]}.md"
-                    zip_file.writestr(report_filename, record['content'])
+                    output_format = record.get('output_format', 'text')
                     
-                    # メタデータ（Markdown形式）
-                    stats = record.get('stats', {})
-                    cost = record.get('cost', {})
-                    
-                    # コスト内訳を計算
-                    input_tokens = cost.get('input_tokens', 0)
-                    output_tokens = cost.get('output_tokens', 0)
-                    total_jpy = cost.get('total_jpy', 0)
-                    total_tokens = input_tokens + output_tokens
-                    
-                    if total_tokens > 0:
-                        input_cost_jpy = total_jpy * input_tokens / total_tokens
-                        output_cost_jpy = total_jpy * output_tokens / total_tokens
+                    if output_format == 'image':
+                        # 画像の場合
+                        # 画像ファイル
+                        image_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_{record['output_type'].replace('/', '_')}.png"
+                        zip_file.writestr(image_filename, record['image_data'])
+                        
+                        # プロンプトファイル
+                        prompt_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_prompt.txt"
+                        zip_file.writestr(prompt_filename, record['prompt'])
+                        
+                        # メタデータ
+                        stats = record.get('stats', {})
+                        cost = record.get('cost', {})
+                        
+                        metadata_md = f"""# 画像生成メタデータ
+
+## 基本情報
+- **生成日時**: {record['timestamp']}
+- **元ファイル**: {record['zip_file']}
+- **出力タイプ**: {record['output_type']}
+- **画像サイズ**: {record.get('image_size', 'N/A')}
+- **画像品質**: {record.get('image_quality', 'N/A')}
+
+## モデル情報
+### フェーズ1: プロンプト生成
+- **AIプロバイダー**: {record['provider']}
+- **モデル名**: {record.get('model_name', record['model'])}
+- **モデルID**: `{record['model']}`
+
+### フェーズ2: 画像生成
+- **AIプロバイダー**: {record.get('image_provider', 'N/A')}
+- **モデル名**: {record.get('image_model_name', 'N/A')}
+- **モデルID**: `{record.get('image_model', 'N/A')}`
+
+## 処理統計
+- **フェーズ1 処理時間**: {stats.get('phase1_time', 0):.1f}秒
+- **フェーズ2 処理時間**: {stats.get('phase2_time', 0):.1f}秒
+- **合計処理時間**: {stats.get('total_time', 0):.1f}秒
+- **プロンプト文字数**: {stats.get('prompt_chars', 0):,}字
+
+## コスト情報
+### フェーズ1（プロンプト生成）
+- **入力トークン**: {cost.get('phase1_input_tokens', 0):,} tokens
+- **出力トークン**: {cost.get('phase1_output_tokens', 0):,} tokens
+- **コスト**: ¥{cost.get('phase1_cost_jpy', 0):.2f} (${cost.get('phase1_cost_usd', 0):.4f})
+
+### フェーズ2（画像生成）
+- **コスト**: ¥{cost.get('phase2_cost_jpy', 0):.2f} (${cost.get('phase2_cost_usd', 0):.4f})
+
+### 合計
+- **合計コスト**: ¥{cost.get('total_jpy', 0):.2f} (${cost.get('total_usd', 0):.4f})
+- **為替レート**: {cost.get('exchange_rate', 150):.1f}円/USD
+
+---
+*生成: VFデータ変換・結果出力ツール*
+"""
+                        metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_info.md"
+                        zip_file.writestr(metadata_filename, metadata_md)
+                        
                     else:
-                        input_cost_jpy = 0
-                        output_cost_jpy = 0
-                    
-                    metadata_md = f"""# レポートメタデータ
+                        # テキストの場合（従来の処理）
+                        # レポート本文
+                        report_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_{record['output_type'].split(' ')[0]}.md"
+                        zip_file.writestr(report_filename, record['content'])
+                        
+                        # メタデータ（Markdown形式）
+                        stats = record.get('stats', {})
+                        cost = record.get('cost', {})
+                        
+                        # コスト内訳を計算
+                        input_tokens = cost.get('input_tokens', 0)
+                        output_tokens = cost.get('output_tokens', 0)
+                        total_jpy = cost.get('total_jpy', 0)
+                        total_tokens = input_tokens + output_tokens
+                        
+                        if total_tokens > 0:
+                            input_cost_jpy = total_jpy * input_tokens / total_tokens
+                            output_cost_jpy = total_jpy * output_tokens / total_tokens
+                        else:
+                            input_cost_jpy = 0
+                            output_cost_jpy = 0
+                        
+                        metadata_md = f"""# レポートメタデータ
 
 ## 基本情報
 - **生成日時**: {record['timestamp']}
@@ -776,8 +1121,8 @@ with tab3:
 ---
 *生成: VFデータ変換・結果出力ツール*
 """
-                    metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_info.md"
-                    zip_file.writestr(metadata_filename, metadata_md)
+                        metadata_filename = f"{idx+1:02d}_{record['timestamp'].replace(':', '-')}_info.md"
+                        zip_file.writestr(metadata_filename, metadata_md)
             
             zip_buffer.seek(0)
             st.download_button(
@@ -791,33 +1136,75 @@ with tab3:
         st.markdown("---")
         
         for idx, record in enumerate(st.session_state.output_history):
-            # レポートの文字数を計算
-            content_length = len(record['content'])
+            output_format = record.get('output_format', 'text')
             
             # コスト情報を取得
             cost_info = record.get('cost', {})
             cost_display = f"¥{cost_info.get('total_jpy', 0):.2f}" if cost_info else "N/A"
             
-            # 改善されたタイトル: 日時 | 出力タイプ | モデル名 | コスト | 文字数
+            # タイトルの作成（形式に応じて）
             model_name = record.get('model_name', record['model'])
-            title = f"📄 {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {content_length:,}字"
+            
+            if output_format == 'image':
+                # 画像の場合のタイトル
+                icon = "🖼️"
+                size_info = record.get('image_size', 'N/A')
+                title = f"{icon} {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {size_info}"
+            else:
+                # テキストの場合のタイトル
+                icon = "📄"
+                content_length = len(record.get('content', ''))
+                title = f"{icon} {record['timestamp']} | {record['output_type']} | {model_name} | {cost_display} | {content_length:,}字"
             
             with st.expander(title, expanded=(idx == 0)):
-                # メタデータ表示
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.write(f"**生成日時**: {record['timestamp']}")
-                    st.write(f"**元ファイル**: {record['zip_file']}")
-                    st.write(f"**出力タイプ**: {record['output_type']}")
-                with col2:
-                    st.write(f"**AIプロバイダー**: {record['provider']}")
-                    st.write(f"**モデル**: {model_name}")
-                    st.write(f"**モデルID**: `{record['model']}`")
-                with col3:
-                    st.write(f"**文字数**: {content_length:,}字")
-                    if cost_info:
-                        st.write(f"**コスト推定**: ¥{cost_info.get('total_jpy', 0):.2f}")
-                        st.write(f"  (${cost_info.get('total_usd', 0):.4f})")
+                # メタデータ表示（形式に応じて）
+                if output_format == 'image':
+                    # 画像の場合のメタデータ
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**生成日時**: {record['timestamp']}")
+                        st.write(f"**元ファイル**: {record['zip_file']}")
+                        st.write(f"**出力タイプ**: {record['output_type']}")
+                    with col2:
+                        st.write(f"**言語モデル**: {model_name}")
+                        st.write(f"**画像モデル**: {record.get('image_model_name', 'N/A')}")
+                        st.write(f"**画像サイズ**: {record.get('image_size', 'N/A')}")
+                    with col3:
+                        st.write(f"**画像品質**: {record.get('image_quality', 'N/A')}")
+                        if cost_info:
+                            st.write(f"**コスト推定**: ¥{cost_info.get('total_jpy', 0):.2f}")
+                            st.write(f"  (${cost_info.get('total_usd', 0):.4f})")
+                    
+                    # コスト詳細（expanderで）
+                    with st.expander("💰 詳細なコスト内訳"):
+                        st.markdown("**フェーズ1（プロンプト生成）:**")
+                        st.write(f"• 入力トークン: {cost_info.get('phase1_input_tokens', 0):,}")
+                        st.write(f"• 出力トークン: {cost_info.get('phase1_output_tokens', 0):,}")
+                        st.write(f"• コスト: ¥{cost_info.get('phase1_cost_jpy', 0):.2f} (${cost_info.get('phase1_cost_usd', 0):.4f})")
+                        
+                        st.markdown("**フェーズ2（画像生成）:**")
+                        st.write(f"• コスト: ¥{cost_info.get('phase2_cost_jpy', 0):.2f} (${cost_info.get('phase2_cost_usd', 0):.4f})")
+                        
+                        st.markdown("**合計:**")
+                        st.write(f"• **¥{cost_info.get('total_jpy', 0):.2f}** (${cost_info.get('total_usd', 0):.4f})")
+                
+                else:
+                    # テキストの場合のメタデータ（従来の処理）
+                    content_length = len(record.get('content', ''))
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**生成日時**: {record['timestamp']}")
+                        st.write(f"**元ファイル**: {record['zip_file']}")
+                        st.write(f"**出力タイプ**: {record['output_type']}")
+                    with col2:
+                        st.write(f"**AIプロバイダー**: {record['provider']}")
+                        st.write(f"**モデル**: {model_name}")
+                        st.write(f"**モデルID**: `{record['model']}`")
+                    with col3:
+                        st.write(f"**文字数**: {content_length:,}字")
+                        if cost_info:
+                            st.write(f"**コスト推定**: ¥{cost_info.get('total_jpy', 0):.2f}")
+                            st.write(f"  (${cost_info.get('total_usd', 0):.4f})")
                     
                 if record.get('custom_instruction', '-') != "-":
                     st.write(f"**カスタム指示**: {record['custom_instruction']}")
@@ -840,22 +1227,56 @@ with tab3:
                 
                 st.markdown("---")
                 
-                # レポート内容表示（Markdownレンダリング）
-                st.markdown("---")
+                # 出力形式に応じた内容表示
+                output_format = record.get('output_format', 'text')
                 
-                # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
-                st.markdown('<div class="compact-content">', unsafe_allow_html=True)
-                st.markdown(record["content"], unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # ダウンロードボタン
-                st.download_button(
-                    label="📥 このレポートをダウンロード",
-                    data=record['content'],
-                    file_name=f"report_{idx}_{record['timestamp'].replace(':', '-').replace(' ', '_')}.md",
-                    mime="text/markdown",
-                    key=f"download_{idx}"
-                )
+                if output_format == 'image':
+                    # 画像の場合
+                    st.markdown("---")
+                    
+                    # プロンプト表示
+                    st.markdown("**🔤 生成されたプロンプト:**")
+                    st.code(record['prompt'], language="text")
+                    
+                    # 画像表示
+                    st.markdown("**🖼️ 生成された画像:**")
+                    st.image(record['image_data'], use_column_width=True)
+                    
+                    # ダウンロードボタン
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            label="📥 画像をダウンロード",
+                            data=record['image_data'],
+                            file_name=f"image_{idx}_{record['timestamp'].replace(':', '-').replace(' ', '_')}.png",
+                            mime="image/png",
+                            key=f"download_img_{idx}"
+                        )
+                    with col2:
+                        st.download_button(
+                            label="📝 プロンプトをダウンロード",
+                            data=record['prompt'],
+                            file_name=f"prompt_{idx}_{record['timestamp'].replace(':', '-').replace(' ', '_')}.txt",
+                            mime="text/plain",
+                            key=f"download_prompt_{idx}"
+                        )
+                else:
+                    # テキストレポートの場合（従来の処理）
+                    st.markdown("---")
+                    
+                    # CSSクラスを適用したコンテナ内でMarkdownをレンダリング
+                    st.markdown('<div class="compact-content">', unsafe_allow_html=True)
+                    st.markdown(record["content"], unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # ダウンロードボタン
+                    st.download_button(
+                        label="📥 このレポートをダウンロード",
+                        data=record['content'],
+                        file_name=f"report_{idx}_{record['timestamp'].replace(':', '-').replace(' ', '_')}.md",
+                        mime="text/markdown",
+                        key=f"download_{idx}"
+                    )
 
 with tab4:
     st.markdown("## 📖 参考情報")
