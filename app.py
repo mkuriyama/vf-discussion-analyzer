@@ -635,6 +635,24 @@ with tab2:
         # テンプレートの説明を表示
         st.info(f"📄 **{selected_template['description']}**")
         
+        # 日本語対応テンプレートの場合は注意書きを表示
+        if selected_template.get('requires_japanese', False):
+            st.warning("""
+            ⚠️ **日本語テキスト対応テンプレート**
+            
+            このテンプレートは画像内に日本語テキストを含みます。
+            
+            **推奨モデル**:
+            - ✅ Gemini 2.5 Flash Image
+            - ✅ Gemini 3 Pro Image Preview
+            
+            **非推奨モデル**:
+            - ❌ Imagen 4シリーズ（日本語テキストの品質が低い場合があります）
+            - ❌ OpenAI DALL-E（日本語非対応）
+            
+            現在選択中: **{selected_image_model_info['name']}**
+            """)
+        
         # 指示文の表示と編集
         st.subheader("✏️ 指示文")
         
@@ -689,17 +707,52 @@ with tab2:
                 exchange_rate
             )
             
-            st.info(f"""
-            💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)  
-            • 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
-            • 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
-            • **合計: ¥{cost_estimate['total_cost_jpy']:.2f}** (${cost_estimate['total_cost_usd']:.4f})
+            # 画像生成の場合は画像コストも含める
+            is_image_template = selected_template.get('output_type') == 'image'
             
-            ※実際のコストは出力内容により変動します
-            """)
+            if is_image_template:
+                # 画像生成コストを計算
+                image_cost_usd = image_model_data.calculate_image_cost(
+                    image_provider,
+                    selected_image_model,
+                    selected_image_size,
+                    selected_image_quality,
+                    num_images=1
+                )
+                image_cost_jpy = image_cost_usd * exchange_rate
+                
+                # 合計コスト（言語モデル + 画像モデル）
+                total_cost_usd = cost_estimate['total_cost_usd'] + image_cost_usd
+                total_cost_jpy = cost_estimate['total_cost_jpy'] + image_cost_jpy
+                
+                st.info(f"""
+                💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)
+                
+                **フェーズ1: プロンプト生成**（言語モデル: {selected_model_info['name']}）
+                • 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
+                • 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
+                • 小計: ¥{cost_estimate['total_cost_jpy']:.2f} (${cost_estimate['total_cost_usd']:.4f})
+                
+                **フェーズ2: 画像生成**（画像モデル: {selected_image_model_info['name']}）
+                • サイズ: {selected_image_size}
+                • 品質: {selected_image_quality}
+                • 小計: ¥{image_cost_jpy:.2f} (${image_cost_usd:.4f})
+                
+                **合計: ¥{total_cost_jpy:.2f}** (${total_cost_usd:.4f})
+                
+                ※実際のコストは出力内容により変動します
+                """)
+            else:
+                st.info(f"""
+                💰 **推定コスト** (為替: {exchange_rate:.1f}円/USD)  
+                • 入力: {input_tokens_est:,} tokens → ¥{cost_estimate['input_cost_jpy']:.2f}  
+                • 出力: {output_tokens_est:,} tokens → ¥{cost_estimate['output_cost_jpy']:.2f}  
+                • **合計: ¥{cost_estimate['total_cost_jpy']:.2f}** (${cost_estimate['total_cost_usd']:.4f})
+                
+                ※実際のコストは出力内容により変動します
+                """)
         
         # 生成ボタン
-        is_image_template = selected_template.get('output_type') == 'image'
         button_text = "🎨 画像生成" if is_image_template else "🚀 レポート生成"
         
         if st.button(button_text, type="primary", use_container_width=True, disabled=not final_instruction):
