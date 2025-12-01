@@ -20,6 +20,11 @@ import content_reference as ref
 import content_settings as settings
 import output_templates as templates
 
+# 機能モジュールのインポート
+import ai_generator
+import model_specs
+import processor
+
 
 def estimate_tokens_multilingual(text):
     """
@@ -407,7 +412,6 @@ if uploaded_file is not None:
         
         with st.sidebar:
             with st.spinner("📄 Markdownに変換中..."):
-                import processor
                 import tempfile
                 
                 try:
