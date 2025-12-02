@@ -74,7 +74,7 @@ IMAGE_MODELS = {
         "gemini-3-pro-image-preview": {
             "name": "Gemini 3 Pro Image Preview",
             "provider": "Google (Gemini)",
-            "description": "高品質な画像生成（プレビュー版）",
+            "description": "Nano Banana Pro。高品質な画像生成（プレビュー版）",
             "supported_sizes": ["1024x1024", "2048x2048", "4096x4096"],
             "supported_quality": ["1K", "2K", "4K"],
             "cost_per_image": {
@@ -98,7 +98,7 @@ IMAGE_MODELS = {
         "gemini-2.5-flash-image": {
             "name": "Gemini 2.5 Flash Image",
             "provider": "Google (Gemini)",
-            "description": "高速・低コストな画像生成",
+            "description": "Nano Banana。高速・低コストな画像生成",
             "supported_sizes": ["1024x1024"],
             "supported_quality": ["standard"],
             "cost_per_image": {
