@@ -6,7 +6,19 @@ AI モデル仕様データベース（コスト情報付き）
 MODEL_SPECS = {
     # ==================== OpenAI ====================
     "OpenAI": {
-        # 【Update】 2025-11-13 リリースの最新系列
+        # 【Update】 2025-12-11 リリースの最新フラッグシップ
+        "gpt-5.2-2025-12-11": {
+            "name": "GPT-5.2",
+            "input_tokens": 400_000,
+            "output_tokens": 128_000,
+            "description": "最新フラッグシップ。推論機能内蔵（xhigh effort対応）、コーディング・Agentタスクに特化。",
+            "released": "2025-12-11",
+            "uses_completion_tokens": True,
+            "note": "reasoning.effortサポート（none/low/medium/high/xhigh）、temperatureサポートなし",
+            "cost_input": 1.75,  # USD per 1M tokens
+            "cost_output": 14.00
+        },
+        # 2025-11-13 リリースの系列
         "gpt-5.1-2025-11-13": {
             "name": "GPT-5.1",
             "input_tokens": 400_000,
@@ -117,7 +129,26 @@ MODEL_SPECS = {
     
     # ==================== Anthropic (Claude) ====================
     "Anthropic (Claude)": {
-        # Claude 4.5 シリーズ
+        # Claude 4.6 シリーズ（最新）
+        "claude-opus-4-6": {
+            "name": "Claude Opus 4.6",
+            "input_tokens": 200_000,
+            "output_tokens": 128_000,
+            "description": "最新フラッグシップ。コーディングと推論に最適化、最高インテリジェンス。Extended Thinking対応。",
+            "released": "2025-12",
+            "cost_input": 5.00,
+            "cost_output": 25.00
+        },
+        "claude-sonnet-4-6": {
+            "name": "Claude Sonnet 4.6",
+            "input_tokens": 200_000,
+            "output_tokens": 64_000,
+            "description": "速度とインテリジェンスのバランス最良。Extended Thinking対応。",
+            "released": "2025-12",
+            "cost_input": 3.00,
+            "cost_output": 15.00
+        },
+        # Claude 4.5 シリーズ（安定版）
         "claude-opus-4-5-20251101": {
             "name": "Claude Opus 4.5",
             "input_tokens": 200_000,
@@ -149,7 +180,18 @@ MODEL_SPECS = {
     
     # ==================== Google (Gemini) ====================
     "Google (Gemini)": {
-        # 11月20日発表のGemini 3系列
+        # 2025-12-17 リリースのGemini 3 Flash
+        "gemini-3-flash-preview": {
+            "name": "Gemini 3 Flash Preview",
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "高速・高性能。Gemini 3 Proレベルの推論をFlashスピードで提供。Thinkingトークン対応。",
+            "released": "2025-12-17",
+            "cost_input": 0.50,  # ≤200K tokens
+            "cost_output": 3.00,
+            "note": "Thinkingトークンあり（reasoning levels: minimal/low/medium/high）"
+        },
+        # 11月20日発表のGemini 3 Pro系列
         "gemini-3-pro-preview": {
             "name": "Gemini 3 Pro Preview",
             "input_tokens": 1_048_576,
