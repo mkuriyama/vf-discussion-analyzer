@@ -6,7 +6,41 @@ AI モデル仕様データベース（コスト情報付き）
 MODEL_SPECS = {
     # ==================== OpenAI ====================
     "OpenAI": {
-        # 【Update】 2025-12-11 リリースの最新フラッグシップ
+        # 【Update】 2026-04-23 リリースの最新フラッグシップ
+        "gpt-5.5-pro": {
+            "name": "GPT-5.5 Pro",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "最上位プレミアムモデル。最高インテリジェンス。272K超で2x/1.5x課金。",
+            "released": "2026-04-24",
+            "uses_completion_tokens": True,
+            "note": "272Kトークン超で入力2x・出力1.5x。reasoning.effortサポート。",
+            "cost_input": 30.00,
+            "cost_output": 180.00
+        },
+        "gpt-5.5": {
+            "name": "GPT-5.5",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "最新フラッグシップ。Agentワークフロー・コーディング特化。ネイティブcomputer use対応。272K超で2x/1.5x課金。",
+            "released": "2026-04-23",
+            "uses_completion_tokens": True,
+            "note": "272Kトークン超で入力2x・出力1.5x。reasoning.effortサポート。temperatureサポートなし。",
+            "cost_input": 5.00,
+            "cost_output": 30.00
+        },
+        "gpt-5.4": {
+            "name": "GPT-5.4",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "本番ワークホース。ネイティブcomputer use対応。272K超で2x/1.5x課金。",
+            "released": "2026-03-05",
+            "uses_completion_tokens": True,
+            "note": "272Kトークン超で入力2x・出力1.5x。temperatureサポートなし。",
+            "cost_input": 2.50,
+            "cost_output": 15.00
+        },
+        # 2025-12-11 リリース
         "gpt-5.2-2025-12-11": {
             "name": "GPT-5.2",
             "input_tokens": 400_000,
@@ -152,6 +186,17 @@ MODEL_SPECS = {
     
     # ==================== Google (Gemini) ====================
     "Google (Gemini)": {
+        # 2026-05-19 GA リリースのGemini 3.5 Flash
+        "gemini-3.5-flash": {
+            "name": "Gemini 3.5 Flash",
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "最新Flashモデル。Gemini 3.1 Pro超えのコーディング・Agentベンチマーク。Dynamic Thinking対応。4x高速。",
+            "released": "2026-05-19",
+            "cost_input": 1.50,
+            "cost_output": 9.00,
+            "note": "Dynamic Thinking対応（minimal/low/medium/high）。内部版: 3.5-flash-05-2026"
+        },
         # 2025-12-17 リリースのGemini 3 Flash
         "gemini-3-flash-preview": {
             "name": "Gemini 3 Flash Preview",
