@@ -326,18 +326,20 @@ def _generate_anthropic(system_prompt, user_prompt, api_key, model, max_tokens):
         raise ImportError("anthropicパッケージが必要です: pip install anthropic")
     
     client = Anthropic(api_key=api_key)
-    
-    # Claudeはsystem promptを別パラメータで指定
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system_prompt,
-        messages=[
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.7
-    )
-    
+
+    api_params = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+
+    # Opus 4.7はtemperature/top_p/top_kを受け付けない（400エラー）
+    if not model.startswith("claude-opus-4-7"):
+        api_params["temperature"] = 0.7
+
+    response = client.messages.create(**api_params)
+
     return response.content[0].text
 
 
@@ -466,6 +468,9 @@ def estimate_cost(model, input_tokens, output_tokens):
     # フォールバック: 代表的なモデルのハードコード料金（USD per 1M tokens）
     pricing_per_1m = {
         # OpenAI
+        'gpt-5.5-pro': {'input': 30.00, 'output': 180.00},
+        'gpt-5.5': {'input': 5.00, 'output': 30.00},
+        'gpt-5.4': {'input': 2.50, 'output': 15.00},
         'gpt-5.2': {'input': 1.75, 'output': 14.00},
         'gpt-5.1': {'input': 1.25, 'output': 10.00},
         'gpt-5': {'input': 1.25, 'output': 10.00},
@@ -474,15 +479,13 @@ def estimate_cost(model, input_tokens, output_tokens):
         'gpt-4.1': {'input': 2.00, 'output': 8.00},
         'gpt-4.1-mini': {'input': 0.40, 'output': 1.60},
         'gpt-4.1-nano': {'input': 0.10, 'output': 0.40},
-        'gpt-4o': {'input': 2.50, 'output': 10.00},
-        'gpt-4o-mini': {'input': 0.15, 'output': 0.60},
         # Anthropic
+        'claude-opus-4-7': {'input': 5.00, 'output': 25.00},
         'claude-opus-4-6': {'input': 5.00, 'output': 25.00},
         'claude-sonnet-4-6': {'input': 3.00, 'output': 15.00},
-        'claude-opus-4-5': {'input': 5.00, 'output': 25.00},
-        'claude-sonnet-4-5': {'input': 3.00, 'output': 15.00},
         'claude-haiku-4-5': {'input': 1.00, 'output': 5.00},
         # Google
+        'gemini-3.5-flash': {'input': 1.50, 'output': 9.00},
         'gemini-3-flash-preview': {'input': 0.50, 'output': 3.00},
         'gemini-3-pro-preview': {'input': 2.00, 'output': 12.00},
         'gemini-2.5-pro': {'input': 1.25, 'output': 10.00},
