@@ -38,6 +38,40 @@ IMAGE_MODELS = {
             "default_size": "1024x1024",
             "default_quality": "medium"
         },
+        "gpt-image-1.5": {
+            "name": "GPT-Image-1.5",
+            "provider": "OpenAI",
+            "description": "gpt-image-2より安価な画像生成。テキスト出力も対応。2025-12リリース。",
+            "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
+            "supported_quality": ["auto", "low", "medium", "high"],
+            "cost_per_image": {
+                "1024x1024": {
+                    "auto":   0.057,
+                    "low":    0.006,
+                    "medium": 0.057,
+                    "high":   0.225
+                },
+                "1024x1792": {
+                    "auto":   0.100,
+                    "low":    0.011,
+                    "medium": 0.100,
+                    "high":   0.394
+                },
+                "1792x1024": {
+                    "auto":   0.100,
+                    "low":    0.011,
+                    "medium": 0.100,
+                    "high":   0.394
+                }
+            },
+            "cost_input_per_1m": 5.00,
+            "cost_image_input_per_1m": 8.00,
+            "cost_output_per_1m": 32.00,
+            "cost_output_text_per_1m": 10.00,
+            "max_prompt_length": 4000,
+            "default_size": "1024x1024",
+            "default_quality": "medium"
+        },
         "gpt-image-1-mini": {
             "name": "GPT-Image-1 Mini",
             "provider": "OpenAI",
@@ -75,7 +109,7 @@ IMAGE_MODELS = {
         "gemini-3.1-flash-image-preview": {
             "name": "Gemini 3.1 Flash Image Preview",
             "provider": "Google (Gemini)",
-            "description": "最新Flash画像生成モデル。1K〜4K解像度対応。2026-02-26リリース。",
+            "description": "最新Flash画像生成モデル。0.5K〜4K解像度対応。2026-02-26リリース。",
             "supported_sizes": ["512x512", "1024x1024", "2048x2048", "4096x4096"],
             "supported_quality": ["0.5K", "1K", "2K", "4K"],
             "cost_per_image": {
@@ -84,11 +118,27 @@ IMAGE_MODELS = {
                 "2048x2048": {"2K":   0.101},
                 "4096x4096": {"4K":   0.151}
             },
-            "cost_input_per_1m": 0.25,    # USD per 1M text input tokens
+            "cost_input_per_1m": 0.50,     # USD per 1M text/image input tokens
             "cost_output_per_1m": 60.00,   # USD per 1M image output tokens
+            "cost_output_text_per_1m": 3.00,  # USD per 1M text/thinking output tokens
             "max_prompt_length": 8192,
             "default_size": "1024x1024",
             "default_quality": "1K"
+        },
+        "gemini-2.5-flash-image": {
+            "name": "Gemini 2.5 Flash Image",
+            "provider": "Google (Gemini)",
+            "description": "2.5 Flashベースの画像生成。$0.039/枚と最安価。1024x1024まで対応。",
+            "supported_sizes": ["1024x1024"],
+            "supported_quality": ["standard"],
+            "cost_per_image": {
+                "1024x1024": {"standard": 0.039}  # $30/1M * 1,290 tokens
+            },
+            "cost_input_per_1m": 0.30,    # USD per 1M text/image input tokens
+            "cost_output_per_1m": 30.00,  # USD per 1M image output tokens (1,290 tokens per image)
+            "max_prompt_length": 8192,
+            "default_size": "1024x1024",
+            "default_quality": "standard"
         },
         "gemini-3-pro-image-preview": {
             "name": "Gemini 3 Pro Image Preview",

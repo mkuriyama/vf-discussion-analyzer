@@ -18,6 +18,17 @@ MODEL_SPECS = {
             "cost_input": 30.00,
             "cost_output": 180.00
         },
+        "gpt-5.4-pro": {
+            "name": "GPT-5.4 Pro",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "GPT-5.4の最上位版。最高品質・高度な推論タスク向け。272K超で2x/1.5x課金。",
+            "released": "2026-03-05",
+            "uses_completion_tokens": True,
+            "note": "272Kトークン超で入力2x・出力1.5x。temperatureサポートなし。",
+            "cost_input": 30.00,
+            "cost_output": 180.00
+        },
         "gpt-5.5": {
             "name": "GPT-5.5",
             "input_tokens": 1_000_000,
@@ -156,28 +167,18 @@ MODEL_SPECS = {
             "cost_output": 9.00,
             "note": "Dynamic Thinking対応（minimal/low/medium/high）"
         },
-        # Gemini 3.1 シリーズ（2026-03〜04 GA）
-        "gemini-3.1-pro": {
-            "name": "Gemini 3.1 Pro",
-            "input_tokens": 2_097_152,
+        # Gemini 3.1 シリーズ（2026-03〜04）
+        "gemini-3.1-pro-preview": {
+            "name": "Gemini 3.1 Pro Preview",
+            "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "ハイエンドモデル。2Mトークン対応。200K超で価格2倍。",
+            "description": "マルチモーダル・エージェント・コーディング最高峰。200K超で価格2倍。",
             "released": "2026-04",
             "cost_input": 2.00,
             "cost_output": 12.00,
             "cost_input_long": 4.00,
             "cost_output_long": 18.00,
-            "note": "200Kトークン超で入力$4/出力$18。2026-04-01以降有料のみ。"
-        },
-        "gemini-3.1-flash": {
-            "name": "Gemini 3.1 Flash",
-            "input_tokens": 1_048_576,
-            "output_tokens": 65_536,
-            "description": "バランス型Flashモデル。Thinking対応。",
-            "released": "2026-03",
-            "cost_input": 0.50,
-            "cost_output": 3.00,
-            "note": "Thinking対応（minimal/low/medium/high）"
+            "note": "200Kトークン超で入力$4/出力$18。無料枠なし。"
         },
         "gemini-3.1-flash-lite": {
             "name": "Gemini 3.1 Flash Lite",
