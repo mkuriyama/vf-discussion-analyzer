@@ -105,36 +105,27 @@ MODEL_SPECS = {
             "cost_input": 0.10,
             "cost_output": 0.025
         },
-        "gpt-4o-2024-11-20": {
-            "name": "GPT-4o",
-            "input_tokens": 128_000,
-            "output_tokens": 16_384,
-            "description": "マルチモーダル（音声・画像・テキスト）対応、バランスの取れた性能と速度。",
-            "released": "2024-11-20",
-            "uses_completion_tokens": False,
-            "cost_input": 2.50,
-            "cost_output": 10.00
-        },
-        "gpt-4o-mini-2024-07-18": {
-            "name": "GPT-4o Mini",
-            "input_tokens": 128_000,
-            "output_tokens": 16_384,
-            "description": "GPT-4oの軽量版。速度とコストを重視した汎用タスク向け。",
-            "released": "2024-07-18",
-            "uses_completion_tokens": False,
-            "cost_input": 0.15,
-            "cost_output": 0.60
-        },
     },
     
     # ==================== Anthropic (Claude) ====================
     "Anthropic (Claude)": {
-        # Claude 4.6 シリーズ（最新）
+        # Claude 4.7 シリーズ（最新）
+        "claude-opus-4-7": {
+            "name": "Claude Opus 4.7",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "最新フラッグシップ。最高インテリジェンス。Adaptive Thinking対応。temperatureサポートなし。",
+            "released": "2026-04",
+            "cost_input": 5.00,
+            "cost_output": 25.00,
+            "note": "Adaptive Thinkingのみ対応。temperature/top_p/top_k不可。"
+        },
+        # Claude 4.6 シリーズ（安定版）
         "claude-opus-4-6": {
             "name": "Claude Opus 4.6",
             "input_tokens": 200_000,
             "output_tokens": 128_000,
-            "description": "最新フラッグシップ。コーディングと推論に最適化、最高インテリジェンス。Extended Thinking対応。",
+            "description": "高インテリジェンス。コーディングと推論に最適化。Adaptive Thinking対応。",
             "released": "2025-12",
             "cost_input": 5.00,
             "cost_output": 25.00
@@ -143,27 +134,8 @@ MODEL_SPECS = {
             "name": "Claude Sonnet 4.6",
             "input_tokens": 200_000,
             "output_tokens": 64_000,
-            "description": "速度とインテリジェンスのバランス最良。Extended Thinking対応。",
+            "description": "速度とインテリジェンスのバランス最良。Adaptive Thinking対応。",
             "released": "2025-12",
-            "cost_input": 3.00,
-            "cost_output": 15.00
-        },
-        # Claude 4.5 シリーズ（安定版）
-        "claude-opus-4-5-20251101": {
-            "name": "Claude Opus 4.5",
-            "input_tokens": 200_000,
-            "output_tokens": 64_000,        # コーディング・エージェント特化
-            "description": "2025年11月リリースの最上位モデル。エージェント性能最高峰。",
-            "released": "2025-11-01",
-            "cost_input": 5.00,
-            "cost_output": 25.00
-        },
-        "claude-sonnet-4-5-20250929": {
-            "name": "Claude Sonnet 4.5",
-            "input_tokens": 200_000,
-            "output_tokens": 64_000,
-            "description": "バランス型・コーディング最適",
-            "released": "2025-09-29",
             "cost_input": 3.00,
             "cost_output": 15.00
         },

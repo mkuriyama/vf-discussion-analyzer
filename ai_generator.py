@@ -326,18 +326,20 @@ def _generate_anthropic(system_prompt, user_prompt, api_key, model, max_tokens):
         raise ImportError("anthropicパッケージが必要です: pip install anthropic")
     
     client = Anthropic(api_key=api_key)
-    
-    # Claudeはsystem promptを別パラメータで指定
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system_prompt,
-        messages=[
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.7
-    )
-    
+
+    api_params = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+
+    # Opus 4.7はtemperature/top_p/top_kを受け付けない（400エラー）
+    if not model.startswith("claude-opus-4-7"):
+        api_params["temperature"] = 0.7
+
+    response = client.messages.create(**api_params)
+
     return response.content[0].text
 
 
@@ -477,10 +479,9 @@ def estimate_cost(model, input_tokens, output_tokens):
         'gpt-4o': {'input': 2.50, 'output': 10.00},
         'gpt-4o-mini': {'input': 0.15, 'output': 0.60},
         # Anthropic
+        'claude-opus-4-7': {'input': 5.00, 'output': 25.00},
         'claude-opus-4-6': {'input': 5.00, 'output': 25.00},
         'claude-sonnet-4-6': {'input': 3.00, 'output': 15.00},
-        'claude-opus-4-5': {'input': 5.00, 'output': 25.00},
-        'claude-sonnet-4-5': {'input': 3.00, 'output': 15.00},
         'claude-haiku-4-5': {'input': 1.00, 'output': 5.00},
         # Google
         'gemini-3-flash-preview': {'input': 0.50, 'output': 3.00},
