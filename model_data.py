@@ -6,7 +6,7 @@ AI モデル仕様データベース（コスト情報付き）
 MODEL_SPECS = {
     # ==================== OpenAI ====================
     "OpenAI": {
-        # 【Update】 2026-04-23 リリースの最新フラッグシップ
+        # GPT-5.5 シリーズ（2026-04 リリース）
         "gpt-5.5-pro": {
             "name": "GPT-5.5 Pro",
             "input_tokens": 1_000_000,
@@ -15,6 +15,17 @@ MODEL_SPECS = {
             "released": "2026-04-24",
             "uses_completion_tokens": True,
             "note": "272Kトークン超で入力2x・出力1.5x。reasoning.effortサポート。",
+            "cost_input": 30.00,
+            "cost_output": 180.00
+        },
+        "gpt-5.4-pro": {
+            "name": "GPT-5.4 Pro",
+            "input_tokens": 1_000_000,
+            "output_tokens": 128_000,
+            "description": "GPT-5.4の最上位版。最高品質・高度な推論タスク向け。272K超で2x/1.5x課金。",
+            "released": "2026-03-05",
+            "uses_completion_tokens": True,
+            "note": "272Kトークン超で入力2x・出力1.5x。temperatureサポートなし。",
             "cost_input": 30.00,
             "cost_output": 180.00
         },
@@ -29,6 +40,7 @@ MODEL_SPECS = {
             "cost_input": 5.00,
             "cost_output": 30.00
         },
+        # GPT-5.4 シリーズ（2026-03 リリース）
         "gpt-5.4": {
             "name": "GPT-5.4",
             "input_tokens": 1_000_000,
@@ -40,57 +52,46 @@ MODEL_SPECS = {
             "cost_input": 2.50,
             "cost_output": 15.00
         },
-        # 2025-12-11 リリース
+        "gpt-5.4-mini": {
+            "name": "GPT-5.4 Mini",
+            "input_tokens": 400_000,
+            "output_tokens": 128_000,
+            "description": "コーディング・computer use・ツール呼び出し・画像推論に最適化。高コスパ。",
+            "released": "2026-03-17",
+            "uses_completion_tokens": True,
+            "note": "temperatureサポートなし。",
+            "cost_input": 0.75,
+            "cost_output": 4.50
+        },
+        "gpt-5.4-nano": {
+            "name": "GPT-5.4 Nano",
+            "input_tokens": 400_000,
+            "output_tokens": 128_000,
+            "description": "高スループット・低レイテンシ向け。分類・データ抽出・サブエージェントに最適。",
+            "released": "2026-03-17",
+            "uses_completion_tokens": True,
+            "note": "temperatureサポートなし。",
+            "cost_input": 0.20,
+            "cost_output": 1.25
+        },
+        # GPT-5.2 シリーズ（2025-12 リリース）
         "gpt-5.2-2025-12-11": {
             "name": "GPT-5.2",
             "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "最新フラッグシップ。推論機能内蔵（xhigh effort対応）、コーディング・Agentタスクに特化。",
+            "description": "推論機能内蔵（xhigh effort対応）、コーディング・Agentタスクに特化。",
             "released": "2025-12-11",
             "uses_completion_tokens": True,
             "note": "reasoning.effortサポート（none/low/medium/high/xhigh）、temperatureサポートなし",
-            "cost_input": 1.75,  # USD per 1M tokens
+            "cost_input": 1.75,
             "cost_output": 14.00
         },
-        # 2025-11-13 リリースの系列
-        "gpt-5.1-2025-11-13": {
-            "name": "GPT-5.1",
-            "input_tokens": 400_000,
-            "output_tokens": 128_000,
-            "description": "最新フラッグシップ。Agenticワークフローに特化。",
-            "released": "2025-11-13",
-            "uses_completion_tokens": True,
-            "cost_input": 1.25,  # USD per 1M tokens
-            "cost_output": 10.00
-        },
-        "gpt-5-pro-2025-10-06": {
-            "name": "GPT-5 Pro",
-            "input_tokens": 400_000,
-            "output_tokens": 272_000,
-            "description": "Deep Research等はこれがベース。TPM: 30,000 tokens/minの制限に注意",
-            "released": "2025-10-06",
-            "uses_completion_tokens": True,
-            "note": "TPM: 30,000 tokens/min",
-            "cost_input": 1.25,
-            "cost_output": 10.00
-        },
-        "gpt-5-2025-08-07": {
-            "name": "GPT-5",
-            "input_tokens": 400_000,
-            "output_tokens": 128_000,
-            "description": "汎用GPT-5。基本モデル。",
-            "released": "2025-08-07",
-            "uses_completion_tokens": True,
-            "note": "temperatureサポートなし（1固定）",
-            "cost_input": 1.25,
-            "cost_output": 10.00
-        },
-        # 軽量モデル群
+        # GPT-5 軽量シリーズ（2025-08 リリース）—— 最安価オプション
         "gpt-5-mini-2025-08-07": {
             "name": "GPT-5 Mini",
             "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "コストパフォーマンス重視。",
+            "description": "5.4-miniより安価な軽量モデル。コストパフォーマンス重視。",
             "released": "2025-08-07",
             "uses_completion_tokens": True,
             "note": "temperatureサポートなし（1固定）",
@@ -101,46 +102,15 @@ MODEL_SPECS = {
             "name": "GPT-5 Nano",
             "input_tokens": 400_000,
             "output_tokens": 128_000,
-            "description": "オンデバイス連携や超高速処理向け。",
+            "description": "最安価テキストモデル。オンデバイス連携や超高速処理向け。",
             "released": "2025-08-07",
             "uses_completion_tokens": True,
             "note": "temperatureサポートなし（1固定）",
             "cost_input": 0.05,
             "cost_output": 0.40
         },
-        # GPT-4以前
-        "gpt-4.1-2025-04-14": {
-            "name": "GPT-4.1",
-            "input_tokens": 1_047_576,
-            "output_tokens": 32_768,
-            "description": "高速レスポンス、長文脈処理（最大100万トークン）、コーディング・指示追従能力に特化。",
-            "released": "2025-04-14",
-            "uses_completion_tokens": False,
-            "cost_input": 2.00,
-            "cost_output": 8.00
-        },
-        "gpt-4.1-mini-2025-04-14": {
-            "name": "GPT-4.1 mini",
-            "input_tokens": 1_047_576,
-            "output_tokens": 32_768,
-            "description": "GPT-4.1の小型版。速度とコスト効率を重視しつつ、高い推論力を維持。",
-            "released": "2025-04-14",
-            "uses_completion_tokens": False,
-            "cost_input": 0.40,
-            "cost_output": 0.10
-        },
-        "gpt-4.1-nano-2025-04-14": {
-            "name": "GPT-4.1 nano",
-            "input_tokens": 1_047_576,
-            "output_tokens": 32_768,
-            "description": "GPT-4.1シリーズで最速・最安価なモデル。軽量タスクや高頻度利用に最適。",
-            "released": "2025-04-14",
-            "uses_completion_tokens": False,
-            "cost_input": 0.10,
-            "cost_output": 0.025
-        },
     },
-    
+
     # ==================== Anthropic (Claude) ====================
     "Anthropic (Claude)": {
         # Claude 4.7 シリーズ（最新）
@@ -183,10 +153,10 @@ MODEL_SPECS = {
             "cost_output": 5.00
         },
     },
-    
+
     # ==================== Google (Gemini) ====================
     "Google (Gemini)": {
-        # 2026-05-19 GA リリースのGemini 3.5 Flash
+        # Gemini 3.5 シリーズ（2026-05 GA）
         "gemini-3.5-flash": {
             "name": "Gemini 3.5 Flash",
             "input_tokens": 1_048_576,
@@ -195,37 +165,37 @@ MODEL_SPECS = {
             "released": "2026-05-19",
             "cost_input": 1.50,
             "cost_output": 9.00,
-            "note": "Dynamic Thinking対応（minimal/low/medium/high）。内部版: 3.5-flash-05-2026"
+            "note": "Dynamic Thinking対応（minimal/low/medium/high）"
         },
-        # 2025-12-17 リリースのGemini 3 Flash
-        "gemini-3-flash-preview": {
-            "name": "Gemini 3 Flash Preview",
+        # Gemini 3.1 シリーズ（2026-03〜04）
+        "gemini-3.1-pro-preview": {
+            "name": "Gemini 3.1 Pro Preview",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "高速・高性能。Gemini 3 Proレベルの推論をFlashスピードで提供。Thinkingトークン対応。",
-            "released": "2025-12-17",
-            "cost_input": 0.50,  # ≤200K tokens
-            "cost_output": 3.00,
-            "note": "Thinkingトークンあり（reasoning levels: minimal/low/medium/high）"
-        },
-        # 11月20日発表のGemini 3 Pro系列
-        "gemini-3-pro-preview": {
-            "name": "Gemini 3 Pro Preview",
-            "input_tokens": 1_048_576,
-            "output_tokens": 65_536,
-            "description": "次世代最上位モデル",
-            "released": "2025-11-20",
-            "cost_input": 2.00,  # ≤200K tokens
+            "description": "マルチモーダル・エージェント・コーディング最高峰。200K超で価格2倍。",
+            "released": "2026-04",
+            "cost_input": 2.00,
             "cost_output": 12.00,
-            "cost_input_long": 4.00,  # >200K tokens
+            "cost_input_long": 4.00,
             "cost_output_long": 18.00,
-            "note": "200Kトークン超で価格2倍"
+            "note": "200Kトークン超で入力$4/出力$18。無料枠なし。"
         },
+        "gemini-3.1-flash-lite": {
+            "name": "Gemini 3.1 Flash Lite",
+            "input_tokens": 1_048_576,
+            "output_tokens": 65_536,
+            "description": "最もコスト効率的なモデル。高ボリューム・低レイテンシ向け。Thinking対応。",
+            "released": "2026-03-03",
+            "cost_input": 0.25,
+            "cost_output": 1.50,
+            "note": "Thinking対応。2.5 Flash Liteより2.5x高速。"
+        },
+        # Gemini 2.5 シリーズ（コスト優位で継続）
         "gemini-2.5-pro": {
             "name": "Gemini 2.5 Pro",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "安定版ハイエンドモデル",
+            "description": "安定版ハイエンドモデル。3.1 Proより入力コスト優位（$1.25 vs $2.00）。",
             "released": "2025-06-17",
             "cost_input": 1.25,
             "cost_output": 10.00
@@ -234,7 +204,7 @@ MODEL_SPECS = {
             "name": "Gemini 2.5 Flash",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "高速・低レイテンシモデル。",
+            "description": "安定版Flashモデル。3.1 Flashより安価（$0.30 vs $0.50）。",
             "released": "2025-06",
             "cost_input": 0.30,
             "cost_output": 2.50
@@ -243,11 +213,10 @@ MODEL_SPECS = {
             "name": "Gemini 2.5 Flash Lite",
             "input_tokens": 1_048_576,
             "output_tokens": 65_536,
-            "description": "最軽量レイテンシモデル。",
+            "description": "最安価Geminiモデル。3.1 Flash Liteより安価（$0.10 vs $0.25）。",
             "released": "2025-06",
             "cost_input": 0.10,
             "cost_output": 0.40
         },
     }
 }
-
